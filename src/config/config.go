@@ -36,8 +36,7 @@ func MustLoadConfig(path string, logger *slog.Logger) *Config {
 	}
 	defer file.Close()
 
-	d := yaml.NewDecoder(file)
-	if err = d.Decode(cfg); err != nil {
+	if err = yaml.NewDecoder(file).Decode(cfg); err != nil {
 		logger.Error(fmt.Sprintf("failed to decode config file: %v", err))
 		return &Config{}
 	}
