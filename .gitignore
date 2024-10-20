@@ -1,0 +1,16 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.env
+*.tmp
+*.bat
+*.txt
+*.log
+*.test
+*.out
+
+go.work
+.idea
+.vscode
