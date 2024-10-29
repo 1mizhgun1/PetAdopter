@@ -1,0 +1,25 @@
+services:
+  postgres:
+    env_file:
+      - .env
+    container_name: postgres
+    image: postgres:15.0
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    networks:
+      - pet-adopter-network
+    volumes:
+      - ./build/create_tables.sql:/docker-entrypoint-initdb.d/initdb.sql
+      - pet-adopter-postgres-data:/var/lib/postgresql/data
+
+networks:
+  pet-adopter-network:
+    name: pet-adopter-network
+    driver: bridge
+
+volumes:
+  pet-adopter-postgres-data:

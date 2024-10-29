@@ -4,21 +4,18 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"runtime"
-	"strings"
 
+	"github.com/pkg/errors"
 	"pet_adopter/src/config"
 )
 
-func GetFunctionName() string {
-	pc := make([]uintptr, 15)
-	n := runtime.Callers(2, pc)
-	frames := runtime.CallersFrames(pc[:n])
-	frame, _ := frames.Next()
-	values := strings.Split(frame.Function, "/")
+const (
+	Internal = "internal"
+	Invalid  = "invalid"
 
-	return values[len(values)-1]
-}
+	MsgErrMarshalResponse  = "failed to unmarshal request"
+	MsgErrUnmarshalRequest = "failed to unmarshal request"
+)
 
 func GetLoggerFromContext(ctx context.Context) *slog.Logger {
 	if logger, ok := ctx.Value(config.LoggerContextKey).(*slog.Logger); ok {
@@ -29,4 +26,14 @@ func GetLoggerFromContext(ctx context.Context) *slog.Logger {
 	logger.Error("failed to logger from context, new logger was created")
 
 	return logger
+}
+
+func LogError(ctx context.Context, err error, msg string) {
+	logger := GetLoggerFromContext(ctx)
+	logger.Error(errors.Wrap(err, msg).Error())
+}
+
+func LogNotAnAdminError(ctx context.Context) {
+	logger := GetLoggerFromContext(ctx)
+	logger.Error("not an admin")
 }

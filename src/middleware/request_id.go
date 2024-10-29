@@ -2,31 +2,47 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/satori/uuid"
 	"pet_adopter/src/config"
 )
 
+type response struct {
+	http.ResponseWriter
+	code int
+}
+
+func (resp *response) WriteHeader(code int) {
+	resp.code = code
+	resp.ResponseWriter.WriteHeader(code)
+}
+
 func CreateRequestIDMiddleware(logger *slog.Logger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqID := uuid.NewV4().String()
+			reqIDLogger := logger.With(slog.String("x-request-id", reqID))
 
-			ctx := context.WithValue(
-				r.Context(),
-				config.LoggerContextKey,
-				logger.With(slog.String("x-request-id", reqID)),
-			)
+			r = r.WithContext(context.WithValue(r.Context(), config.LoggerContextKey, reqIDLogger))
+			resp := response{ResponseWriter: w}
+			resp.Header().Set("X-Request-ID", reqID)
 
-			r = r.WithContext(ctx)
-			w.Header().Set("X-Request-ID", reqID)
+			reqIDLogger.
+				With(slog.String("method", r.Method)).
+				With(slog.String("uri", r.URL.Path)).
+				Info("input request")
 
-			logger.Info(fmt.Sprintf("input request %s uri=%s", reqID, r.RequestURI))
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(&resp, r)
+
+			reqIDLogger.
+				With(slog.String("method", r.Method)).
+				With(slog.String("uri", r.URL.Path)).
+				With(slog.String("status", strconv.Itoa(resp.code))).
+				Info("finished request")
 		})
 	}
 }
