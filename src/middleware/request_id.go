@@ -30,6 +30,7 @@ func CreateRequestIDMiddleware(logger *slog.Logger) mux.MiddlewareFunc {
 			r = r.WithContext(context.WithValue(r.Context(), config.LoggerContextKey, reqIDLogger))
 			resp := response{ResponseWriter: w}
 			resp.Header().Set("X-Request-ID", reqID)
+			resp.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 			reqIDLogger.
 				With(slog.String("method", r.Method)).
@@ -37,6 +38,10 @@ func CreateRequestIDMiddleware(logger *slog.Logger) mux.MiddlewareFunc {
 				Info("input request")
 
 			next.ServeHTTP(&resp, r)
+
+			if resp.code == 0 {
+				resp.code = http.StatusOK
+			}
 
 			reqIDLogger.
 				With(slog.String("method", r.Method)).

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/satori/uuid"
 	"pet_adopter/src/config"
 )
 
@@ -28,6 +29,22 @@ func GetLoggerFromContext(ctx context.Context) *slog.Logger {
 	return logger
 }
 
+func GetUserIDFromContext(ctx context.Context) uuid.UUID {
+	if userID, ok := ctx.Value(config.UserIDContextKey).(uuid.UUID); ok {
+		return userID
+	}
+
+	return uuid.Nil
+}
+
+func GetUsernameFromContext(ctx context.Context) string {
+	if username, ok := ctx.Value(config.UsernameContextKey).(string); ok {
+		return username
+	}
+
+	return ""
+}
+
 func LogError(ctx context.Context, err error, msg string) {
 	logger := GetLoggerFromContext(ctx)
 	logger.Error(errors.Wrap(err, msg).Error())
@@ -36,4 +53,9 @@ func LogError(ctx context.Context, err error, msg string) {
 func LogNotAnAdminError(ctx context.Context) {
 	logger := GetLoggerFromContext(ctx)
 	logger.Error("not an admin")
+}
+
+func LogErrorMessage(ctx context.Context, msg string) {
+	logger := GetLoggerFromContext(ctx)
+	logger.Error(msg)
 }

@@ -10,11 +10,19 @@ import (
 )
 
 type LoggerKey string
+type UserIDKey string
+type UsernameKey string
 
-const LoggerContextKey LoggerKey = "logger"
+const (
+	LoggerContextKey   LoggerKey = "logger"
+	UserIDContextKey   UserIDKey = "userID"
+	UsernameContextKey UserIDKey = "username"
+)
 
 type Config struct {
-	Main MainConfig `yaml:"main"`
+	Main       MainConfig       `yaml:"main"`
+	Session    SessionConfig    `yaml:"session"`
+	Validation ValidationConfig `yaml:"validation"`
 }
 
 type MainConfig struct {
@@ -24,6 +32,21 @@ type MainConfig struct {
 	ReadHeaderTimeout time.Duration `yaml:"read_header_timeout"`
 	IdleTimeout       time.Duration `yaml:"idle_timeout"`
 	ShutdownTimeout   time.Duration `yaml:"shutdown_timeout"`
+}
+
+type SessionConfig struct {
+	RefreshTokenLength    int           `yaml:"refresh_token_length"`
+	AccessTokenLength     int           `yaml:"access_token_length"`
+	AccessTokenLifeTime   time.Duration `yaml:"access_token_life_time"`
+	AccessTokenCookieName string        `yaml:"access_token_cookie_name"`
+	ProtectedCookies      bool          `yaml:"protected_cookies"`
+}
+
+type ValidationConfig struct {
+	UsernameMinLength int `yaml:"username_min_length"`
+	UsernameMaxLength int `yaml:"username_max_length"`
+	PasswordMinLength int `yaml:"password_min_length"`
+	PasswordMaxLength int `yaml:"password_max_length"`
 }
 
 func MustLoadConfig(path string, logger *slog.Logger) *Config {

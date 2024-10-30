@@ -15,11 +15,15 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	handlersOfAnimal "pet_adopter/src/animal/handlers"
 	logicOfAnimal "pet_adopter/src/animal/logic"
 	repoOfAnimal "pet_adopter/src/animal/repo"
 	"pet_adopter/src/config"
 	"pet_adopter/src/middleware"
+	handlersOfUser "pet_adopter/src/user/handlers"
+	logicOfUser "pet_adopter/src/user/logic"
+	repoOfUser "pet_adopter/src/user/repo"
 )
 
 func init() {
@@ -55,11 +59,32 @@ func main() {
 	}
 	logger.Info("Postgres connected")
 
+	redisOpts, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to parse redis url").Error())
+		return
+	}
+	redisClient := redis.NewClient(redisOpts)
+
+	if err = redisClient.Ping(context.Background()).Err(); err != nil {
+		logger.Error(errors.Wrap(err, "failed to ping redis").Error())
+		return
+	}
+	logger.Info("Redis connected")
+
 	animalRepo := repoOfAnimal.NewAnimalsPostgres(postgres)
 	animalLogic := logicOfAnimal.NewAnimalLogic(animalRepo)
 	animalHandler := handlersOfAnimal.NewAnimalHandler(animalLogic)
 
+	sessionRepo := repoOfUser.NewSessionRedis(redisClient)
+	sessionLogic := logicOfUser.NewSessionLogic(sessionRepo, cfg.Session)
+
+	userRepo := repoOfUser.NewUserPostgres(postgres)
+	userLogic := logicOfUser.NewUserLogic(userRepo)
+	userHandler := handlersOfUser.NewUserHandler(userLogic, sessionLogic, cfg.Session, cfg.Validation)
+
 	reqIDMiddleware := middleware.CreateRequestIDMiddleware(logger)
+	sessionMiddleware := middleware.CreateSessionMiddleware(userLogic, sessionLogic, cfg.Session)
 
 	r := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 	r.Use(reqIDMiddleware, middleware.CorsMiddleware, middleware.RecoverMiddleware)
@@ -70,10 +95,12 @@ func main() {
 
 	user := r.PathPrefix("/user").Subrouter()
 	{
-		user.Handle("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("Hello, World!"))
-		})).Methods(http.MethodGet, http.MethodOptions)
+		user.Handle("/signup", http.HandlerFunc(userHandler.SignUp)).
+			Methods(http.MethodPost, http.MethodOptions)
+		user.Handle("/login", http.HandlerFunc(userHandler.Login)).
+			Methods(http.MethodPost, http.MethodOptions)
+		user.Handle("/logout", sessionMiddleware(http.HandlerFunc(userHandler.Logout))).
+			Methods(http.MethodPost, http.MethodOptions)
 	}
 
 	animals := r.PathPrefix("/animals").Subrouter()

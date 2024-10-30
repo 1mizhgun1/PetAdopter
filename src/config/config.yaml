@@ -5,3 +5,14 @@ main:
   read_header_timeout: 10s
   idle_timeout: 30s
   shutdown_timeout: 10s
+session:
+  refresh_token_length: 128
+  access_token_length: 64
+  access_token_life_time: 86400s
+  access_token_cookie_name: pet_adopter_session
+  protected_cookies: false
+validation:
+  username_min_length: 3
+  username_max_length: 20
+  password_min_length: 8
+  password_max_length: 64

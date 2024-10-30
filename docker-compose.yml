@@ -9,12 +9,29 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     networks:
       - pet-adopter-network
     volumes:
       - ./build/create_tables.sql:/docker-entrypoint-initdb.d/initdb.sql
       - pet-adopter-postgres-data:/var/lib/postgresql/data
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - pet-adopter-redis-data:/var/lib/redis/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "127.0.0.1:6379:6379"
+    env_file:
+      - .env
+    networks:
+      - pet-adopter-network
 
 networks:
   pet-adopter-network:
@@ -23,3 +40,4 @@ networks:
 
 volumes:
   pet-adopter-postgres-data:
+  pet-adopter-redis-data:
