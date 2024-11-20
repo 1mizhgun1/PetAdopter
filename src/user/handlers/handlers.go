@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/satori/uuid"
 	"pet_adopter/src/config"
 	"pet_adopter/src/user"
 	"pet_adopter/src/utils"
@@ -185,4 +186,26 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 	})
+}
+
+func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	userID := utils.GetUserIDFromContext(r.Context())
+	if userID == uuid.Nil {
+		utils.LogErrorMessage(r.Context(), "user not found in context")
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+
+	userData, err := h.user.GetUserByID(r.Context(), userID)
+	if err != nil {
+		utils.LogError(r.Context(), err, "failed to get user by id")
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+
+	if err = json.NewEncoder(w).Encode(userData); err != nil {
+		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
 }

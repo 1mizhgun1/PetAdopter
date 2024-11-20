@@ -19,6 +19,9 @@ import (
 	handlersOfAnimal "pet_adopter/src/animal/handlers"
 	logicOfAnimal "pet_adopter/src/animal/logic"
 	repoOfAnimal "pet_adopter/src/animal/repo"
+	handlersOfBreed "pet_adopter/src/breed/handlers"
+	logicOfBreed "pet_adopter/src/breed/logic"
+	repoOfBreed "pet_adopter/src/breed/repo"
 	"pet_adopter/src/config"
 	"pet_adopter/src/middleware"
 	handlersOfUser "pet_adopter/src/user/handlers"
@@ -72,9 +75,13 @@ func main() {
 	}
 	logger.Info("Redis connected")
 
-	animalRepo := repoOfAnimal.NewAnimalsPostgres(postgres)
+	animalRepo := repoOfAnimal.NewAnimalPostgres(postgres)
 	animalLogic := logicOfAnimal.NewAnimalLogic(animalRepo)
 	animalHandler := handlersOfAnimal.NewAnimalHandler(animalLogic)
+
+	breedRepo := repoOfBreed.NewBreedPostgres(postgres)
+	breedLogic := logicOfBreed.NewBreedLogic(breedRepo)
+	breedHandler := handlersOfBreed.NewBreedHandler(breedLogic)
 
 	sessionRepo := repoOfUser.NewSessionRedis(redisClient)
 	sessionLogic := logicOfUser.NewSessionLogic(sessionRepo, cfg.Session)
@@ -101,6 +108,8 @@ func main() {
 			Methods(http.MethodPost, http.MethodOptions)
 		user.Handle("/logout", sessionMiddleware(http.HandlerFunc(userHandler.Logout))).
 			Methods(http.MethodPost, http.MethodOptions)
+		user.Handle("", sessionMiddleware(http.HandlerFunc(userHandler.GetUser))).
+			Methods(http.MethodGet, http.MethodOptions)
 	}
 
 	animals := r.PathPrefix("/animals").Subrouter()
@@ -112,6 +121,18 @@ func main() {
 		animals.Handle("/add", middleware.AdminMiddleware(http.HandlerFunc(animalHandler.AddAnimal))).
 			Methods(http.MethodPost, http.MethodOptions)
 		animals.Handle("/remove", middleware.AdminMiddleware(http.HandlerFunc(animalHandler.RemoveAnimalByID))).
+			Methods(http.MethodPost, http.MethodOptions)
+	}
+
+	breeds := r.PathPrefix("/breeds").Subrouter()
+	{
+		breeds.Handle("", middleware.AdminMiddleware(http.HandlerFunc(breedHandler.GetBreeds))).
+			Methods(http.MethodGet, http.MethodOptions)
+		breeds.Handle("/{id}", middleware.AdminMiddleware(http.HandlerFunc(breedHandler.GetBreedByID))).
+			Methods(http.MethodGet, http.MethodOptions)
+		breeds.Handle("/add", middleware.AdminMiddleware(http.HandlerFunc(breedHandler.AddBreed))).
+			Methods(http.MethodPost, http.MethodOptions)
+		breeds.Handle("/remove", middleware.AdminMiddleware(http.HandlerFunc(breedHandler.RemoveBreedByID))).
 			Methods(http.MethodPost, http.MethodOptions)
 	}
 

@@ -24,7 +24,7 @@ func CreateSessionMiddleware(userLogic *logic.UserLogic, sessionLogic *logic.Ses
 			headerToken := r.Header.Get("Authorization")
 			if !strings.HasPrefix(headerToken, "Bearer ") {
 				utils.LogErrorMessage(r.Context(), "invalid token in Authorization header")
-				http.Error(w, msgNoAuth, http.StatusBadRequest)
+				http.Error(w, msgNoAuth, http.StatusUnauthorized)
 				return
 			}
 			headerToken = strings.TrimPrefix(headerToken, "Bearer ")
@@ -33,7 +33,7 @@ func CreateSessionMiddleware(userLogic *logic.UserLogic, sessionLogic *logic.Ses
 			if err != nil {
 				if goerrors.Is(err, http.ErrNoCookie) {
 					utils.LogErrorMessage(r.Context(), "no session cookie")
-					http.Error(w, msgNoAuth, http.StatusBadRequest)
+					http.Error(w, msgNoAuth, http.StatusUnauthorized)
 				} else {
 					utils.LogError(r.Context(), err, "failed to get access token from cookie")
 					http.Error(w, utils.Internal, http.StatusInternalServerError)
@@ -43,7 +43,7 @@ func CreateSessionMiddleware(userLogic *logic.UserLogic, sessionLogic *logic.Ses
 
 			if cookieToken.Value != headerToken {
 				utils.LogErrorMessage(r.Context(), "tokens are different")
-				http.Error(w, msgNoAuth, http.StatusBadRequest)
+				http.Error(w, msgNoAuth, http.StatusUnauthorized)
 				return
 			}
 
@@ -55,7 +55,7 @@ func CreateSessionMiddleware(userLogic *logic.UserLogic, sessionLogic *logic.Ses
 			}
 			if !correctSession {
 				utils.LogErrorMessage(r.Context(), "invalid session")
-				http.Error(w, msgNoAuth, http.StatusBadRequest)
+				http.Error(w, msgNoAuth, http.StatusUnauthorized)
 				return
 			}
 

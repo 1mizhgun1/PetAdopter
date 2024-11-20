@@ -11,7 +11,6 @@ import (
 var (
 	ErrUserNotFound        = errors.New("user not found")
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
-	ErrInvalidAccessToken  = errors.New("invalid access token")
 	ErrUserAlreadyExists   = errors.New("user already exists")
 )
 

@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	getUserByID       = `SELECT id, username, password_hash, locality_id, created_at FROM MyUser WHERE id = $1`
-	getUserByUsername = `SELECT id, username, password_hash, locality_id, created_at FROM MyUser WHERE username = $1`
-	createUser        = `INSERT INTO MyUser (id, username, password_hash, locality_id, created_at) VALUES ($1, $2, $3, $4, $5)`
-	setLocalityID     = `UPDATE MyUser SET locality_id = $1 WHERE id = $2`
+	getUserByID       = `SELECT id, username, password_hash, locality_id, created_at FROM MyUser WHERE id = $1;`
+	getUserByUsername = `SELECT id, username, password_hash, locality_id, created_at FROM MyUser WHERE username = $1;`
+	createUser        = `INSERT INTO MyUser (id, username, password_hash, locality_id, created_at) VALUES ($1, $2, $3, $4, $5);`
+	setLocalityID     = `UPDATE MyUser SET locality_id = $1 WHERE id = $2;`
 )
 
 type UserPostgres struct {

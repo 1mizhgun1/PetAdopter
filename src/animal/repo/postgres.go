@@ -12,17 +12,17 @@ import (
 )
 
 const (
-	getAnimals    = `SELECT id, name FROM Animal ORDER BY name ASC`
-	getAnimalByID = `SELECT id, name FROM Animal WHERE id = $1`
-	addAnimal     = `INSERT INTO Animal (id, name) VALUES ($1, $2)`
-	removeAnimal  = `DELETE FROM Animal WHERE id = $1`
+	getAnimals    = `SELECT id, name FROM Animal ORDER BY name ASC;`
+	getAnimalByID = `SELECT id, name FROM Animal WHERE id = $1;`
+	addAnimal     = `INSERT INTO Animal (id, name) VALUES ($1, $2);`
+	removeAnimal  = `DELETE FROM Animal WHERE id = $1;`
 )
 
 type AnimalPostgres struct {
 	db pgxtype.Querier
 }
 
-func NewAnimalsPostgres(db pgxtype.Querier) *AnimalPostgres {
+func NewAnimalPostgres(db pgxtype.Querier) *AnimalPostgres {
 	return &AnimalPostgres{db: db}
 }
 
@@ -35,11 +35,11 @@ func (repo *AnimalPostgres) GetAnimals(ctx context.Context) ([]animal.Animal, er
 	}
 
 	for query.Next() {
-		var animal animal.Animal
-		if err = query.Scan(&animal.ID, &animal.Name); err != nil {
+		var animalRow animal.Animal
+		if err = query.Scan(&animalRow.ID, &animalRow.Name); err != nil {
 			return result, errors.Wrap(err, "failed to parse animal")
 		}
-		result = append(result, animal)
+		result = append(result, animalRow)
 	}
 
 	return result, nil
