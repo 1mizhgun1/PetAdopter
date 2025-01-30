@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS Ad (
     id UUID PRIMARY KEY,
     owner_id UUID NOT NULL REFERENCES MyUser (id),
     status ad_status_values NOT NULL,
-    locality_id UUID REFERENCES Locality (id),
     photo_url TEXT CONSTRAINT user_ad_photo_url_length CHECK (char_length(photo_url) <= 128),
     description TEXT,
     price INTEGER NOT NULL,
