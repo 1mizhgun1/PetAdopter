@@ -2,16 +2,19 @@ package logic
 
 import (
 	"context"
+	goerrors "errors"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/satori/uuid"
+	"pet_adopter/src/locality"
 	"pet_adopter/src/user"
 	"pet_adopter/src/utils"
 )
 
 type UserLogic struct {
-	repo user.UserRepo
+	repo         user.UserRepo
+	localityRepo locality.LocalityRepo
 }
 
 func NewUserLogic(repo user.UserRepo) *UserLogic {
@@ -26,12 +29,12 @@ func (logic *UserLogic) GetUserByUsername(ctx context.Context, username string) 
 	return logic.repo.GetUserByUsername(ctx, username)
 }
 
-func (logic *UserLogic) CreateUser(ctx context.Context, username string, password string) (user.User, error) {
+func (logic *UserLogic) CreateUser(ctx context.Context, username string, password string, localityID uuid.UUID) (user.User, error) {
 	userData := user.User{
 		ID:           uuid.NewV4(),
 		Username:     username,
 		PasswordHash: utils.GetPasswordHash(password),
-		LocalityID:   uuid.Nil,
+		LocalityID:   localityID,
 		CreatedAt:    time.Now().Local(),
 	}
 
@@ -43,6 +46,14 @@ func (logic *UserLogic) CreateUser(ctx context.Context, username string, passwor
 }
 
 func (logic *UserLogic) SetLocalityID(ctx context.Context, id uuid.UUID, localityID uuid.UUID) (user.User, error) {
+	_, err := logic.localityRepo.GetLocalityByID(ctx, localityID)
+	if err != nil {
+		if goerrors.Is(err, locality.ErrLocalityNotFound) {
+			return user.User{}, locality.ErrLocalityNotFound
+		}
+		return user.User{}, errors.Wrap(err, "failed to get locality")
+	}
+
 	if err := logic.repo.SetLocalityID(ctx, id, localityID); err != nil {
 		return user.User{}, errors.Wrap(err, "failed to set locality id")
 	}

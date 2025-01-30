@@ -8,6 +8,7 @@ import (
 
 	"github.com/satori/uuid"
 	"pet_adopter/src/config"
+	"pet_adopter/src/locality"
 	"pet_adopter/src/user"
 	"pet_adopter/src/utils"
 )
@@ -41,8 +42,9 @@ func (h *UserHandler) validateUserCredentials(username string, password string) 
 }
 
 type SignUpRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username   string     `json:"username"`
+	Password   string     `json:"password"`
+	LocalityID *uuid.UUID `json:"locality_id,omitempty"`
 }
 
 type SignUpResponse struct {
@@ -64,7 +66,11 @@ func (h *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userData, err := h.user.CreateUser(r.Context(), req.Username, req.Password)
+	localityID := uuid.Nil
+	if req.LocalityID != nil {
+		localityID = *req.LocalityID
+	}
+	userData, err := h.user.CreateUser(r.Context(), req.Username, req.Password, localityID)
 	if err != nil {
 		if goerrors.Is(err, user.ErrUserAlreadyExists) {
 			utils.LogErrorMessage(r.Context(), user.ErrUserAlreadyExists.Error())
@@ -199,6 +205,44 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	userData, err := h.user.GetUserByID(r.Context(), userID)
 	if err != nil {
 		utils.LogError(r.Context(), err, "failed to get user by id")
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+
+	if err = json.NewEncoder(w).Encode(userData); err != nil {
+		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+}
+
+type SetLocalityRequest struct {
+	LocalityID uuid.UUID `json:"locality_id"`
+}
+
+func (h *UserHandler) SetLocality(w http.ResponseWriter, r *http.Request) {
+	userID := utils.GetUserIDFromContext(r.Context())
+	if userID == uuid.Nil {
+		utils.LogErrorMessage(r.Context(), "user not found in context")
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+
+	req := SetLocalityRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.LogError(r.Context(), err, utils.MsgErrUnmarshalRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
+		return
+	}
+
+	userData, err := h.user.SetLocalityID(r.Context(), userID, req.LocalityID)
+	if err != nil {
+		if goerrors.Is(err, locality.ErrLocalityNotFound) {
+			utils.LogError(r.Context(), err, "locality not found")
+			http.Error(w, utils.Invalid, http.StatusBadRequest)
+			return
+		}
+		utils.LogError(r.Context(), err, "failed to set locality")
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
 	}

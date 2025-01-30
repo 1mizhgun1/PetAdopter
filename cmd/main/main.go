@@ -23,7 +23,13 @@ import (
 	logicOfBreed "pet_adopter/src/breed/logic"
 	repoOfBreed "pet_adopter/src/breed/repo"
 	"pet_adopter/src/config"
+	handlersOfLocality "pet_adopter/src/locality/handlers"
+	logicOfLocality "pet_adopter/src/locality/logic"
+	repoOfLocality "pet_adopter/src/locality/repo"
 	"pet_adopter/src/middleware"
+	handlersOfRegion "pet_adopter/src/region/handlers"
+	logicOfRegion "pet_adopter/src/region/logic"
+	repoOfRegion "pet_adopter/src/region/repo"
 	handlersOfUser "pet_adopter/src/user/handlers"
 	logicOfUser "pet_adopter/src/user/logic"
 	repoOfUser "pet_adopter/src/user/repo"
@@ -83,6 +89,14 @@ func main() {
 	breedLogic := logicOfBreed.NewBreedLogic(breedRepo)
 	breedHandler := handlersOfBreed.NewBreedHandler(breedLogic)
 
+	regionRepo := repoOfRegion.NewRegionPostgres(postgres)
+	regionLogic := logicOfRegion.NewRegionLogic(regionRepo)
+	regionHandler := handlersOfRegion.NewRegionHandler(regionLogic)
+
+	localityRepo := repoOfLocality.NewLocalityPostgres(postgres)
+	localityLogic := logicOfLocality.NewLocalityLogic(localityRepo)
+	localityHandler := handlersOfLocality.NewLocalityHandler(localityLogic)
+
 	sessionRepo := repoOfUser.NewSessionRedis(redisClient)
 	sessionLogic := logicOfUser.NewSessionLogic(sessionRepo, cfg.Session)
 
@@ -110,13 +124,15 @@ func main() {
 			Methods(http.MethodPost, http.MethodOptions)
 		user.Handle("", sessionMiddleware(http.HandlerFunc(userHandler.GetUser))).
 			Methods(http.MethodGet, http.MethodOptions)
+		user.Handle("/set_locality", sessionMiddleware(http.HandlerFunc(userHandler.SetLocality))).
+			Methods(http.MethodPost, http.MethodOptions)
 	}
 
 	animals := r.PathPrefix("/animals").Subrouter()
 	{
-		animals.Handle("", middleware.AdminMiddleware(http.HandlerFunc(animalHandler.GetAnimals))).
+		animals.Handle("", http.HandlerFunc(animalHandler.GetAnimals)).
 			Methods(http.MethodGet, http.MethodOptions)
-		animals.Handle("/{id}", middleware.AdminMiddleware(http.HandlerFunc(animalHandler.GetAnimalByID))).
+		animals.Handle("/{id}", http.HandlerFunc(animalHandler.GetAnimalByID)).
 			Methods(http.MethodGet, http.MethodOptions)
 		animals.Handle("/add", middleware.AdminMiddleware(http.HandlerFunc(animalHandler.AddAnimal))).
 			Methods(http.MethodPost, http.MethodOptions)
@@ -126,13 +142,37 @@ func main() {
 
 	breeds := r.PathPrefix("/breeds").Subrouter()
 	{
-		breeds.Handle("", middleware.AdminMiddleware(http.HandlerFunc(breedHandler.GetBreeds))).
+		breeds.Handle("", http.HandlerFunc(breedHandler.GetBreeds)).
 			Methods(http.MethodGet, http.MethodOptions)
-		breeds.Handle("/{id}", middleware.AdminMiddleware(http.HandlerFunc(breedHandler.GetBreedByID))).
+		breeds.Handle("/{id}", http.HandlerFunc(breedHandler.GetBreedByID)).
 			Methods(http.MethodGet, http.MethodOptions)
 		breeds.Handle("/add", middleware.AdminMiddleware(http.HandlerFunc(breedHandler.AddBreed))).
 			Methods(http.MethodPost, http.MethodOptions)
 		breeds.Handle("/remove", middleware.AdminMiddleware(http.HandlerFunc(breedHandler.RemoveBreedByID))).
+			Methods(http.MethodPost, http.MethodOptions)
+	}
+
+	regions := r.PathPrefix("/regions").Subrouter()
+	{
+		regions.Handle("", http.HandlerFunc(regionHandler.GetRegions)).
+			Methods(http.MethodGet, http.MethodOptions)
+		regions.Handle("/{id}", http.HandlerFunc(regionHandler.GetRegionByID)).
+			Methods(http.MethodGet, http.MethodOptions)
+		regions.Handle("/add", middleware.AdminMiddleware(http.HandlerFunc(regionHandler.AddRegion))).
+			Methods(http.MethodPost, http.MethodOptions)
+		regions.Handle("/remove", middleware.AdminMiddleware(http.HandlerFunc(regionHandler.RemoveRegionByID))).
+			Methods(http.MethodPost, http.MethodOptions)
+	}
+
+	localities := r.PathPrefix("/localities").Subrouter()
+	{
+		localities.Handle("", http.HandlerFunc(localityHandler.GetLocalities)).
+			Methods(http.MethodGet, http.MethodOptions)
+		localities.Handle("/{id}", http.HandlerFunc(localityHandler.GetLocalityByID)).
+			Methods(http.MethodGet, http.MethodOptions)
+		localities.Handle("/add", middleware.AdminMiddleware(http.HandlerFunc(localityHandler.AddLocality))).
+			Methods(http.MethodPost, http.MethodOptions)
+		localities.Handle("/remove", middleware.AdminMiddleware(http.HandlerFunc(localityHandler.RemoveLocalityByID))).
 			Methods(http.MethodPost, http.MethodOptions)
 	}
 
