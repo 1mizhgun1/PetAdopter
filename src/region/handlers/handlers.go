@@ -8,15 +8,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/satori/uuid"
 	"pet_adopter/src/region"
-	"pet_adopter/src/region/logic"
 	"pet_adopter/src/utils"
 )
 
 type RegionHandler struct {
-	logic logic.RegionLogic
+	logic region.RegionLogic
 }
 
-func NewRegionHandler(logic logic.RegionLogic) *RegionHandler {
+func NewRegionHandler(logic region.RegionLogic) *RegionHandler {
 	return &RegionHandler{logic: logic}
 }
 

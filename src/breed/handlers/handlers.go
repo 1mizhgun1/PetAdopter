@@ -8,15 +8,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/satori/uuid"
 	"pet_adopter/src/breed"
-	"pet_adopter/src/breed/logic"
 	"pet_adopter/src/utils"
 )
 
 type BreedHandler struct {
-	logic logic.BreedLogic
+	logic breed.BreedLogic
 }
 
-func NewBreedHandler(logic logic.BreedLogic) *BreedHandler {
+func NewBreedHandler(logic breed.BreedLogic) *BreedHandler {
 	return &BreedHandler{logic: logic}
 }
 

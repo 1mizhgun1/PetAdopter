@@ -20,6 +20,10 @@ import (
 	"pet_adopter/src/config"
 	"pet_adopter/src/middleware"
 
+	handlersOfAd "pet_adopter/src/ad/handlers"
+	logicOfAd "pet_adopter/src/ad/logic"
+	repoOfAd "pet_adopter/src/ad/repo"
+
 	handlersOfAnimal "pet_adopter/src/animal/handlers"
 	logicOfAnimal "pet_adopter/src/animal/logic"
 	repoOfAnimal "pet_adopter/src/animal/repo"
@@ -87,21 +91,25 @@ func main() {
 	}
 	logger.Info("Redis connected")
 
+	adRepo := repoOfAd.NewAdPostgres(postgres)
+	adLogic := logicOfAd.NewAdLogic(adRepo)
+	adHandler := handlersOfAd.NewAdHandler(&adLogic, cfg.Ad)
+
 	animalRepo := repoOfAnimal.NewAnimalPostgres(postgres)
 	animalLogic := logicOfAnimal.NewAnimalLogic(animalRepo)
-	animalHandler := handlersOfAnimal.NewAnimalHandler(animalLogic)
+	animalHandler := handlersOfAnimal.NewAnimalHandler(&animalLogic)
 
 	breedRepo := repoOfBreed.NewBreedPostgres(postgres)
 	breedLogic := logicOfBreed.NewBreedLogic(breedRepo)
-	breedHandler := handlersOfBreed.NewBreedHandler(breedLogic)
+	breedHandler := handlersOfBreed.NewBreedHandler(&breedLogic)
 
 	regionRepo := repoOfRegion.NewRegionPostgres(postgres)
 	regionLogic := logicOfRegion.NewRegionLogic(regionRepo)
-	regionHandler := handlersOfRegion.NewRegionHandler(regionLogic)
+	regionHandler := handlersOfRegion.NewRegionHandler(&regionLogic)
 
 	localityRepo := repoOfLocality.NewLocalityPostgres(postgres)
 	localityLogic := logicOfLocality.NewLocalityLogic(localityRepo)
-	localityHandler := handlersOfLocality.NewLocalityHandler(localityLogic)
+	localityHandler := handlersOfLocality.NewLocalityHandler(&localityLogic)
 
 	sessionRepo := repoOfUser.NewSessionRedis(redisClient)
 	sessionLogic := logicOfUser.NewSessionLogic(sessionRepo, cfg.Session)
@@ -131,6 +139,22 @@ func main() {
 		user.Handle("", sessionMiddleware(http.HandlerFunc(userHandler.GetUser))).
 			Methods(http.MethodGet, http.MethodOptions)
 		user.Handle("/set_locality", sessionMiddleware(http.HandlerFunc(userHandler.SetLocality))).
+			Methods(http.MethodPost, http.MethodOptions)
+	}
+
+	ads := r.PathPrefix("/ads").Subrouter()
+	{
+		ads.Handle("", sessionMiddleware(http.HandlerFunc(adHandler.Search))).
+			Methods(http.MethodGet, http.MethodOptions)
+		ads.Handle("/{id}", sessionMiddleware(http.HandlerFunc(adHandler.Get))).
+			Methods(http.MethodGet, http.MethodOptions)
+		ads.Handle("/create", sessionMiddleware(http.HandlerFunc(adHandler.Create))).
+			Methods(http.MethodPost, http.MethodOptions)
+		ads.Handle("/update", sessionMiddleware(http.HandlerFunc(adHandler.Update))).
+			Methods(http.MethodPost, http.MethodOptions)
+		ads.Handle("/close", sessionMiddleware(http.HandlerFunc(adHandler.Close))).
+			Methods(http.MethodPost, http.MethodOptions)
+		ads.Handle("/update", middleware.AdminMiddleware(http.HandlerFunc(adHandler.Delete))).
 			Methods(http.MethodPost, http.MethodOptions)
 	}
 

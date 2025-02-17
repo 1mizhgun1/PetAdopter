@@ -20,3 +20,4 @@ ad:
   max_price: 1000000
   default_search_limit: 20
   default_search_offset: 20
+  max_search_limit: 1000

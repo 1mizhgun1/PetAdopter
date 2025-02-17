@@ -15,9 +15,9 @@ var (
 )
 
 const (
-	Actual    = AdStatus(0)
-	Realised  = AdStatus(1)
-	Cancelled = AdStatus(2)
+	Actual    = 'A'
+	Realised  = 'R'
+	Cancelled = 'C'
 )
 
 type Ad struct {
@@ -26,13 +26,13 @@ type Ad struct {
 	OwnerID uuid.UUID `json:"owner_id"`
 	Status  AdStatus  `json:"status"`
 
-	AdForm `json:"ad_form"`
+	AdForm
 
 	CreatedAt int64 `json:"created_at"`
 	UpdatedAt int64 `json:"updated_at"`
 }
 
-type AdStatus int
+type AdStatus byte
 
 type AdForm struct {
 	PhotoURL    string    `json:"photo_url"`

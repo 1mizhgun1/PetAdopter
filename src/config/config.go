@@ -54,6 +54,7 @@ type AdConfig struct {
 	MaxPrice            int `yaml:"max_price"`
 	DefaultSearchLimit  int `yaml:"default_search_limit"`
 	DefaultSearchOffset int `yaml:"default_search_offset"`
+	MaxSearchLimit      int `yaml:"max_search_limit"`
 }
 
 func MustLoadConfig(path string, logger *slog.Logger) *Config {

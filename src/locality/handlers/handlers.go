@@ -8,15 +8,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/satori/uuid"
 	"pet_adopter/src/locality"
-	"pet_adopter/src/locality/logic"
 	"pet_adopter/src/utils"
 )
 
 type LocalityHandler struct {
-	logic logic.LocalityLogic
+	logic locality.LocalityLogic
 }
 
-func NewLocalityHandler(logic logic.LocalityLogic) *LocalityHandler {
+func NewLocalityHandler(logic locality.LocalityLogic) *LocalityHandler {
 	return &LocalityHandler{logic: logic}
 }
 
