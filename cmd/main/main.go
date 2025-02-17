@@ -16,20 +16,26 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
+
+	"pet_adopter/src/config"
+	"pet_adopter/src/middleware"
+
 	handlersOfAnimal "pet_adopter/src/animal/handlers"
 	logicOfAnimal "pet_adopter/src/animal/logic"
 	repoOfAnimal "pet_adopter/src/animal/repo"
+
 	handlersOfBreed "pet_adopter/src/breed/handlers"
 	logicOfBreed "pet_adopter/src/breed/logic"
 	repoOfBreed "pet_adopter/src/breed/repo"
-	"pet_adopter/src/config"
+
 	handlersOfLocality "pet_adopter/src/locality/handlers"
 	logicOfLocality "pet_adopter/src/locality/logic"
 	repoOfLocality "pet_adopter/src/locality/repo"
-	"pet_adopter/src/middleware"
+
 	handlersOfRegion "pet_adopter/src/region/handlers"
 	logicOfRegion "pet_adopter/src/region/logic"
 	repoOfRegion "pet_adopter/src/region/repo"
+
 	handlersOfUser "pet_adopter/src/user/handlers"
 	logicOfUser "pet_adopter/src/user/logic"
 	repoOfUser "pet_adopter/src/user/repo"

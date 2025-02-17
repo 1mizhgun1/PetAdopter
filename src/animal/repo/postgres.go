@@ -33,6 +33,7 @@ func (repo *AnimalPostgres) GetAnimals(ctx context.Context) ([]animal.Animal, er
 	if err != nil {
 		return result, errors.Wrap(err, "failed to get animals from postgres")
 	}
+	defer query.Close()
 
 	for query.Next() {
 		var animalRow animal.Animal

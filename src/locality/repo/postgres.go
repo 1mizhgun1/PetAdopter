@@ -34,6 +34,7 @@ func (repo *LocalityPostgres) GetLocalities(ctx context.Context) ([]locality.Loc
 	if err != nil {
 		return result, errors.Wrap(err, "failed to get localities from postgres")
 	}
+	defer query.Close()
 
 	for query.Next() {
 		var localityRow locality.Locality
@@ -65,6 +66,7 @@ func (repo *LocalityPostgres) GetLocalitiesByRegionID(ctx context.Context, regio
 	if err != nil {
 		return result, errors.Wrap(err, "failed to get localities by region id from postgres")
 	}
+	defer query.Close()
 
 	for query.Next() {
 		var localityRow locality.Locality

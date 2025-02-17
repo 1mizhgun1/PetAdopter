@@ -34,6 +34,7 @@ func (repo *BreedPostgres) GetBreeds(ctx context.Context) ([]breed.Breed, error)
 	if err != nil {
 		return result, errors.Wrap(err, "failed to get breeds from postgres")
 	}
+	defer query.Close()
 
 	for query.Next() {
 		var breedRow breed.Breed
@@ -65,6 +66,7 @@ func (repo *BreedPostgres) GetBreedsByAnimalID(ctx context.Context, animalID uui
 	if err != nil {
 		return result, errors.Wrap(err, "failed to get breeds by animal id from postgres")
 	}
+	defer query.Close()
 
 	for query.Next() {
 		var breedRow breed.Breed

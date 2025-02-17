@@ -16,3 +16,7 @@ validation:
   username_max_length: 20
   password_min_length: 8
   password_max_length: 64
+ad:
+  max_price: 1000000
+  default_search_limit: 20
+  default_search_offset: 20

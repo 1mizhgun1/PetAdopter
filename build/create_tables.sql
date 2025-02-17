@@ -36,12 +36,13 @@ CREATE TABLE IF NOT EXISTS Ad (
     id UUID PRIMARY KEY,
     owner_id UUID NOT NULL REFERENCES MyUser (id),
     status ad_status_values NOT NULL,
-    photo_url TEXT CONSTRAINT user_ad_photo_url_length CHECK (char_length(photo_url) <= 128),
-    description TEXT,
+    photo_url TEXT CONSTRAINT ad_photo_url_length CHECK (char_length(photo_url) <= 128),
+    title TEXT CONSTRAINT ad_title_length CHECK (char_length(title) <= 32),
+    description TEXT CONSTRAINT ad_description_length CHECK (char_length(description) <= 4096),
     price INTEGER NOT NULL,
     animal_id UUID NOT NULL REFERENCES Animal (id),
     breed_id UUID NOT NULL REFERENCES Breed (id),
-    contacts TEXT NOT NULL CONSTRAINT user_ad_contacts_length CHECK (char_length(contacts) <= 128),
+    contacts TEXT NOT NULL CONSTRAINT ad_contacts_length CHECK (char_length(contacts) <= 128),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );

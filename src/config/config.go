@@ -23,6 +23,7 @@ type Config struct {
 	Main       MainConfig       `yaml:"main"`
 	Session    SessionConfig    `yaml:"session"`
 	Validation ValidationConfig `yaml:"validation"`
+	Ad         AdConfig         `yaml:"ad"`
 }
 
 type MainConfig struct {
@@ -47,6 +48,12 @@ type ValidationConfig struct {
 	UsernameMaxLength int `yaml:"username_max_length"`
 	PasswordMinLength int `yaml:"password_min_length"`
 	PasswordMaxLength int `yaml:"password_max_length"`
+}
+
+type AdConfig struct {
+	MaxPrice            int `yaml:"max_price"`
+	DefaultSearchLimit  int `yaml:"default_search_limit"`
+	DefaultSearchOffset int `yaml:"default_search_offset"`
 }
 
 func MustLoadConfig(path string, logger *slog.Logger) *Config {

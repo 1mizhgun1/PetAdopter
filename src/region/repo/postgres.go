@@ -33,6 +33,7 @@ func (repo *RegionPostgres) GetRegions(ctx context.Context) ([]region.Region, er
 	if err != nil {
 		return result, errors.Wrap(err, "failed to get regions from postgres")
 	}
+	defer query.Close()
 
 	for query.Next() {
 		var RegionRow region.Region
