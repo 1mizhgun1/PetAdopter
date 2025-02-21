@@ -61,6 +61,12 @@ type PhotoParams struct {
 	Extension string        `json:"extension"`
 }
 
+type AdInfo struct {
+	AnimalName   string `json:"animal_name"`
+	BreedName    string `json:"breed_name"`
+	LocalityName string `json:"locality_name"`
+}
+
 type SearchParams struct {
 	OwnerID  *uuid.UUID `json:"owner_id"`
 	AnimalID *uuid.UUID `json:"animal_id"`
@@ -94,7 +100,7 @@ type AdRepo interface {
 
 type AdLogic interface {
 	SearchAds(ctx context.Context, params SearchParams) ([]Ad, error)
-	GetAd(ctx context.Context, id uuid.UUID) (Ad, error)
+	GetAd(ctx context.Context, id uuid.UUID) (Ad, AdInfo, error)
 	CreateAd(ctx context.Context, form AdForm, photoForm PhotoParams) (Ad, error)
 	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm) (Ad, error)
 	UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm PhotoParams) (Ad, error)

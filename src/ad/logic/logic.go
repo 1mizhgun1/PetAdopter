@@ -9,32 +9,68 @@ import (
 	"github.com/pkg/errors"
 	"github.com/satori/uuid"
 	"pet_adopter/src/ad"
+	"pet_adopter/src/animal"
+	"pet_adopter/src/breed"
+	"pet_adopter/src/locality"
+	"pet_adopter/src/user"
 	"pet_adopter/src/utils"
 )
 
 type AdLogic struct {
-	repo ad.AdRepo
+	repo         ad.AdRepo
+	userRepo     user.UserRepo
+	animalRepo   animal.AnimalRepo
+	breedRepo    breed.BreedRepo
+	localityRepo locality.LocalityRepo
 }
 
-func NewAdLogic(repo ad.AdRepo) AdLogic {
-	return AdLogic{repo: repo}
+func NewAdLogic(repo ad.AdRepo, userRepo user.UserRepo, animalRepo animal.AnimalRepo, breedRepo breed.BreedRepo, localityRepo locality.LocalityRepo) AdLogic {
+	return AdLogic{
+		repo:         repo,
+		userRepo:     userRepo,
+		animalRepo:   animalRepo,
+		breedRepo:    breedRepo,
+		localityRepo: localityRepo,
+	}
 }
 
 func (l *AdLogic) SearchAds(ctx context.Context, params ad.SearchParams) ([]ad.Ad, error) {
 	return l.repo.SearchAds(ctx, params)
 }
 
-func (l *AdLogic) GetAd(ctx context.Context, id uuid.UUID) (ad.Ad, error) {
+func (l *AdLogic) GetAd(ctx context.Context, id uuid.UUID) (ad.Ad, ad.AdInfo, error) {
 	currentAd, err := l.repo.GetAd(ctx, id)
 	if err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to get ad")
+		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get ad")
 	}
 
-	if currentAd.OwnerID != utils.GetUserIDFromContext(ctx) {
-		return ad.Ad{}, ad.ErrNotOwner
+	currentOwner, err := l.userRepo.GetUserByID(ctx, utils.GetUserIDFromContext(ctx))
+	if err != nil {
+		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get owner")
 	}
 
-	return currentAd, nil
+	currentLocality, err := l.localityRepo.GetLocalityByID(ctx, currentOwner.LocalityID)
+	if err != nil {
+		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get locality")
+	}
+
+	currentAnimal, err := l.animalRepo.GetAnimalByID(ctx, currentAd.AnimalID)
+	if err != nil {
+		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get animal")
+	}
+
+	currentBreed, err := l.breedRepo.GetBreedByID(ctx, currentAd.BreedID)
+	if err != nil {
+		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get breed")
+	}
+
+	adInfo := ad.AdInfo{
+		LocalityName: currentLocality.Name,
+		AnimalName:   currentAnimal.Name,
+		BreedName:    currentBreed.Name,
+	}
+
+	return currentAd, adInfo, nil
 }
 
 func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.PhotoParams) (ad.Ad, error) {

@@ -23,7 +23,10 @@ type AdHandler struct {
 }
 
 func NewAdHandler(logic ad.AdLogic, cfg config.AdConfig) *AdHandler {
-	return &AdHandler{logic: logic, cfg: cfg}
+	return &AdHandler{
+		logic: logic,
+		cfg:   cfg,
+	}
 }
 
 type SearchResponse struct {
@@ -39,9 +42,6 @@ func (h *AdHandler) Search(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid search params", http.StatusBadRequest)
 		return
 	}
-
-	ownerID := utils.GetUserIDFromContext(ctx)
-	searchParams.OwnerID = &ownerID
 
 	foundAds, err := h.logic.SearchAds(ctx, searchParams)
 	if err != nil {
@@ -59,7 +59,8 @@ func (h *AdHandler) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 type GetResponse struct {
-	Ad ad.Ad `json:"ad"`
+	Ad   ad.Ad     `json:"ad"`
+	Info ad.AdInfo `json:"info"`
 }
 
 func (h *AdHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -72,13 +73,16 @@ func (h *AdHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundAd, err := h.logic.GetAd(ctx, adID)
+	foundAd, foundAdInfo, err := h.logic.GetAd(ctx, adID)
 	if err != nil {
 		handleAdError(ctx, w, err)
 		return
 	}
 
-	result := GetResponse{Ad: foundAd}
+	result := GetResponse{
+		Ad:   foundAd,
+		Info: foundAdInfo,
+	}
 	if err = json.NewEncoder(w).Encode(result); err != nil {
 		utils.LogError(ctx, err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
@@ -417,14 +421,15 @@ func (h *AdHandler) getPhotoDataFromRequest(w http.ResponseWriter, r *http.Reque
 }
 
 func handleAdError(ctx context.Context, w http.ResponseWriter, err error) {
-	if goerrors.Is(err, ad.ErrAdNotFound) {
+	switch {
+	case goerrors.Is(err, ad.ErrAdNotFound):
 		utils.LogError(ctx, err, "ad not found")
 		http.Error(w, utils.NotFound, http.StatusNotFound)
-	} else if goerrors.Is(err, ad.ErrNotOwner) {
+	case goerrors.Is(err, ad.ErrNotOwner):
 		utils.LogError(ctx, err, "not owner")
 		http.Error(w, utils.NotFound, http.StatusForbidden)
-	} else {
-		utils.LogError(ctx, err, "failed to update ad")
+	default:
+		utils.LogError(ctx, err, "failed to perform operation")
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 	}
 }
