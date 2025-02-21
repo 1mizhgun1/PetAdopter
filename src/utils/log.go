@@ -13,6 +13,7 @@ import (
 const (
 	Internal = "internal"
 	Invalid  = "invalid"
+	NotFound = "not_found"
 
 	MsgErrMarshalResponse  = "failed to unmarshal request"
 	MsgErrUnmarshalRequest = "failed to unmarshal request"

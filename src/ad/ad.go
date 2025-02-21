@@ -2,6 +2,7 @@ package ad
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/pkg/errors"
@@ -55,6 +56,11 @@ type UpdateForm struct {
 	Status      *AdStatus  `json:"status"`
 }
 
+type PhotoParams struct {
+	Data      io.ReadSeeker `json:"data"`
+	Extension string        `json:"extension"`
+}
+
 type SearchParams struct {
 	OwnerID  *uuid.UUID `json:"owner_id"`
 	AnimalID *uuid.UUID `json:"animal_id"`
@@ -89,9 +95,9 @@ type AdRepo interface {
 type AdLogic interface {
 	SearchAds(ctx context.Context, params SearchParams) ([]Ad, error)
 	GetAd(ctx context.Context, id uuid.UUID) (Ad, error)
-	CreateAd(ctx context.Context, form AdForm) (Ad, error)
+	CreateAd(ctx context.Context, form AdForm, photoForm PhotoParams) (Ad, error)
 	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm) (Ad, error)
-	UpdatePhoto(ctx context.Context, id uuid.UUID, newPhotoURL string) (Ad, error)
+	UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm PhotoParams) (Ad, error)
 	Close(ctx context.Context, id uuid.UUID, status AdStatus) (Ad, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }

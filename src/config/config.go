@@ -51,10 +51,17 @@ type ValidationConfig struct {
 }
 
 type AdConfig struct {
-	MaxPrice            int `yaml:"max_price"`
-	DefaultSearchLimit  int `yaml:"default_search_limit"`
-	DefaultSearchOffset int `yaml:"default_search_offset"`
-	MaxSearchLimit      int `yaml:"max_search_limit"`
+	MaxPrice            int           `yaml:"max_price"`
+	DefaultSearchLimit  int           `yaml:"default_search_limit"`
+	DefaultSearchOffset int           `yaml:"default_search_offset"`
+	MaxSearchLimit      int           `yaml:"max_search_limit"`
+	AdPhotoConfig       AdPhotoConfig `yaml:"photo"`
+}
+
+type AdPhotoConfig struct {
+	MaxFormDataSize  int64             `yaml:"max_form_data_size"`
+	FileTypes        map[string]string `yaml:"file_types"`
+	RequestFieldName string            `yaml:"request_field_name"`
 }
 
 func MustLoadConfig(path string, logger *slog.Logger) *Config {

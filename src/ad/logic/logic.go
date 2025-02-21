@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"os"
+	"path"
 	"time"
 
 	"github.com/pkg/errors"
@@ -23,13 +25,38 @@ func (l *AdLogic) SearchAds(ctx context.Context, params ad.SearchParams) ([]ad.A
 }
 
 func (l *AdLogic) GetAd(ctx context.Context, id uuid.UUID) (ad.Ad, error) {
-	return l.repo.GetAd(ctx, id)
+	currentAd, err := l.repo.GetAd(ctx, id)
+	if err != nil {
+		return ad.Ad{}, errors.Wrap(err, "failed to get ad")
+	}
+
+	if currentAd.OwnerID != utils.GetUserIDFromContext(ctx) {
+		return ad.Ad{}, ad.ErrNotOwner
+	}
+
+	return currentAd, nil
 }
 
-func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm) (ad.Ad, error) {
+func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.PhotoParams) (ad.Ad, error) {
 	now := time.Now().Local().Unix()
+	adID := uuid.NewV4()
+
+	photoBasePath := os.Getenv("PHOTO_BASE_PATH")
+	photoFilename := adID.String()
+
+	newPhotoExtension, err := utils.WriteFileOnDisk(
+		path.Join(photoBasePath, photoFilename),
+		photoForm.Extension,
+		photoForm.Data,
+	)
+	if err != nil {
+		return ad.Ad{}, errors.Wrap(err, "failed to write photo on disk")
+	}
+
+	form.PhotoURL = photoFilename + newPhotoExtension
+
 	result := ad.Ad{
-		ID:        uuid.NewV4(),
+		ID:        adID,
 		OwnerID:   utils.GetUserIDFromContext(ctx),
 		Status:    ad.Actual,
 		AdForm:    form,
@@ -37,7 +64,7 @@ func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm) (ad.Ad, error) {
 		UpdatedAt: now,
 	}
 
-	if err := l.repo.CreateAd(ctx, result); err != nil {
+	if err = l.repo.CreateAd(ctx, result); err != nil {
 		return result, errors.Wrap(err, "failed to create ad")
 	}
 
@@ -68,7 +95,7 @@ func (l *AdLogic) UpdateAd(ctx context.Context, id uuid.UUID, form ad.UpdateForm
 	return result, nil
 }
 
-func (l *AdLogic) UpdatePhoto(ctx context.Context, id uuid.UUID, newPhotoURL string) (ad.Ad, error) {
+func (l *AdLogic) UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm ad.PhotoParams) (ad.Ad, error) {
 	now := time.Now().Local()
 
 	currentAd, err := l.repo.GetAd(ctx, id)
@@ -79,6 +106,24 @@ func (l *AdLogic) UpdatePhoto(ctx context.Context, id uuid.UUID, newPhotoURL str
 	if currentAd.OwnerID != utils.GetUserIDFromContext(ctx) {
 		return ad.Ad{}, ad.ErrNotOwner
 	}
+
+	photoBasePath := os.Getenv("PHOTO_BASE_PATH")
+	photoFilename := currentAd.ID.String()
+
+	if err = os.Remove(path.Join(photoBasePath, currentAd.PhotoURL)); err != nil {
+		return ad.Ad{}, errors.Wrap(err, "failed to remove old photo from disk")
+	}
+
+	newPhotoExtension, err := utils.WriteFileOnDisk(
+		path.Join(photoBasePath, photoFilename),
+		photoForm.Extension,
+		photoForm.Data,
+	)
+	if err != nil {
+		return ad.Ad{}, errors.Wrap(err, "failed to write new photo on disk")
+	}
+
+	newPhotoURL := photoFilename + newPhotoExtension
 
 	if err = l.repo.UpdateAd(ctx, id, ad.UpdateForm{PhotoURL: &newPhotoURL}, now); err != nil {
 		return ad.Ad{}, errors.Wrap(err, "failed to update ad")
@@ -109,5 +154,16 @@ func (l *AdLogic) Close(ctx context.Context, id uuid.UUID, status ad.AdStatus) (
 }
 
 func (l *AdLogic) Delete(ctx context.Context, id uuid.UUID) error {
+	currentAd, err := l.repo.GetAd(ctx, id)
+	if err != nil {
+		return errors.Wrap(err, "failed to check owner")
+	}
+
+	photoBasePath := os.Getenv("PHOTO_BASE_PATH")
+
+	if err = os.Remove(path.Join(photoBasePath, currentAd.PhotoURL)); err != nil {
+		return errors.Wrap(err, "failed to remove old photo from disk")
+	}
+
 	return l.repo.DeleteAd(ctx, id)
 }
