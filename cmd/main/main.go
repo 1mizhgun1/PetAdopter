@@ -91,10 +91,6 @@ func main() {
 	}
 	logger.Info("Redis connected")
 
-	adRepo := repoOfAd.NewAdPostgres(postgres)
-	adLogic := logicOfAd.NewAdLogic(adRepo)
-	adHandler := handlersOfAd.NewAdHandler(&adLogic, cfg.Ad)
-
 	animalRepo := repoOfAnimal.NewAnimalPostgres(postgres)
 	animalLogic := logicOfAnimal.NewAnimalLogic(animalRepo)
 	animalHandler := handlersOfAnimal.NewAnimalHandler(&animalLogic)
@@ -115,8 +111,12 @@ func main() {
 	sessionLogic := logicOfUser.NewSessionLogic(sessionRepo, cfg.Session)
 
 	userRepo := repoOfUser.NewUserPostgres(postgres)
-	userLogic := logicOfUser.NewUserLogic(userRepo)
+	userLogic := logicOfUser.NewUserLogic(userRepo, localityRepo)
 	userHandler := handlersOfUser.NewUserHandler(userLogic, sessionLogic, cfg.Session, cfg.Validation)
+
+	adRepo := repoOfAd.NewAdPostgres(postgres)
+	adLogic := logicOfAd.NewAdLogic(adRepo, userRepo, animalRepo, breedRepo, localityRepo)
+	adHandler := handlersOfAd.NewAdHandler(&adLogic, cfg.Ad)
 
 	reqIDMiddleware := middleware.CreateRequestIDMiddleware(logger)
 	sessionMiddleware := middleware.CreateSessionMiddleware(userLogic, sessionLogic, cfg.Session)
@@ -144,17 +144,19 @@ func main() {
 
 	ads := r.PathPrefix("/ads").Subrouter()
 	{
-		ads.Handle("", sessionMiddleware(http.HandlerFunc(adHandler.Search))).
+		ads.Handle("", http.HandlerFunc(adHandler.Search)).
 			Methods(http.MethodGet, http.MethodOptions)
-		ads.Handle("/{id}", sessionMiddleware(http.HandlerFunc(adHandler.Get))).
+		ads.Handle("/{id}", http.HandlerFunc(adHandler.Get)).
 			Methods(http.MethodGet, http.MethodOptions)
 		ads.Handle("/create", sessionMiddleware(http.HandlerFunc(adHandler.Create))).
 			Methods(http.MethodPost, http.MethodOptions)
-		ads.Handle("/update", sessionMiddleware(http.HandlerFunc(adHandler.Update))).
+		ads.Handle("/{id}/update", sessionMiddleware(http.HandlerFunc(adHandler.Update))).
 			Methods(http.MethodPost, http.MethodOptions)
-		ads.Handle("/close", sessionMiddleware(http.HandlerFunc(adHandler.Close))).
+		ads.Handle("/{id}/update_photo", sessionMiddleware(http.HandlerFunc(adHandler.UpdatePhoto))).
 			Methods(http.MethodPost, http.MethodOptions)
-		ads.Handle("/update", middleware.AdminMiddleware(http.HandlerFunc(adHandler.Delete))).
+		ads.Handle("/{id}/close", sessionMiddleware(http.HandlerFunc(adHandler.Close))).
+			Methods(http.MethodPost, http.MethodOptions)
+		ads.Handle("/{id}/delete", middleware.AdminMiddleware(http.HandlerFunc(adHandler.Delete))).
 			Methods(http.MethodPost, http.MethodOptions)
 	}
 

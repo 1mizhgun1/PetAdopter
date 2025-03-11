@@ -93,7 +93,7 @@ func (repo *UserPostgres) CreateUser(ctx context.Context, userData user.User) er
 }
 
 func (repo *UserPostgres) SetLocalityID(ctx context.Context, id uuid.UUID, localityID uuid.UUID) error {
-	if _, err := repo.db.Exec(ctx, setLocalityID, id, localityID); err != nil {
+	if _, err := repo.db.Exec(ctx, setLocalityID, localityID, id); err != nil {
 		return errors.Wrap(err, "failed to set locality")
 	}
 

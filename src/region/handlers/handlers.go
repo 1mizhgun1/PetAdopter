@@ -66,6 +66,10 @@ type AddRegionRequest struct {
 	Name string `json:"name"`
 }
 
+type AddRegionResponse struct {
+	Region region.Region `json:"region"`
+}
+
 func (h *RegionHandler) AddRegion(w http.ResponseWriter, r *http.Request) {
 	var req AddRegionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -81,7 +85,8 @@ func (h *RegionHandler) AddRegion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(regionData); err != nil {
+	resp := AddRegionResponse{Region: regionData}
+	if err = json.NewEncoder(w).Encode(resp); err != nil {
 		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return

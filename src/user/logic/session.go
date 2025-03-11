@@ -32,7 +32,7 @@ func (logic *SessionLogic) CheckSession(ctx context.Context, username string, to
 
 func (logic *SessionLogic) SetSession(ctx context.Context, username string) (string, string, error) {
 	accessToken := utils.GenerateSessionToken(logic.cfg.AccessTokenLength)
-	if err := logic.session.SetAccessToken(ctx, username, accessToken, logic.cfg.AccessTokenLifeTime*1e9); err != nil {
+	if err := logic.session.SetAccessToken(ctx, username, accessToken, logic.cfg.AccessTokenLifeTime); err != nil {
 		return "", "", errors.Wrap(err, "failed to set access token")
 	}
 

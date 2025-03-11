@@ -11,32 +11,33 @@ import (
 )
 
 var (
-	ErrAdNotFound = errors.New("ad not found")
-	ErrNotOwner   = errors.New("not owner")
+	ErrAdNotFound        = errors.New("ad not found")
+	ErrNotOwner          = errors.New("not owner")
+	ErrInvalidForeignKey = errors.New("invalid foreign key")
 )
 
 const (
-	Actual    = 'A'
-	Realised  = 'R'
-	Cancelled = 'C'
+	Actual    = "A"
+	Realised  = "R"
+	Cancelled = "C"
 )
 
 type Ad struct {
 	ID uuid.UUID `json:"id"`
 
 	OwnerID uuid.UUID `json:"owner_id"`
-	Status  AdStatus  `json:"status"`
+	Status  string    `json:"status"`
 
 	AdForm
 
-	CreatedAt int64 `json:"created_at"`
-	UpdatedAt int64 `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type AdStatus byte
 
 type AdForm struct {
-	PhotoURL    string    `json:"photo_url"`
+	PhotoURL    string    `json:"photo_url,omitempty"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	AnimalID    uuid.UUID `json:"animal_id"`
@@ -46,14 +47,14 @@ type AdForm struct {
 }
 
 type UpdateForm struct {
-	PhotoURL    *string    `json:"photo_url"`
-	Title       *string    `json:"title"`
-	Description *string    `json:"description"`
-	AnimalID    *uuid.UUID `json:"animal_id"`
-	BreedID     *uuid.UUID `json:"breed_id"`
-	Price       *int       `json:"price"`
-	Contacts    *string    `json:"contacts"`
-	Status      *AdStatus  `json:"status"`
+	PhotoURL    *string    `json:"photo_url,omitempty"`
+	Title       *string    `json:"title,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	AnimalID    *uuid.UUID `json:"animal_id,omitempty"`
+	BreedID     *uuid.UUID `json:"breed_id,omitempty"`
+	Price       *int       `json:"price,omitempty"`
+	Contacts    *string    `json:"contacts,omitempty"`
+	Status      *string    `json:"status,omitempty"`
 }
 
 type PhotoParams struct {
@@ -104,6 +105,6 @@ type AdLogic interface {
 	CreateAd(ctx context.Context, form AdForm, photoForm PhotoParams) (Ad, error)
 	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm) (Ad, error)
 	UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm PhotoParams) (Ad, error)
-	Close(ctx context.Context, id uuid.UUID, status AdStatus) (Ad, error)
+	Close(ctx context.Context, id uuid.UUID, status string) (Ad, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }

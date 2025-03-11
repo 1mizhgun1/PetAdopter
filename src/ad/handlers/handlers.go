@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	goerrors "errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -39,7 +40,7 @@ func (h *AdHandler) Search(w http.ResponseWriter, r *http.Request) {
 	searchParams, err := getSearchParamsFromQuery(r.URL.Query(), h.cfg)
 	if err != nil {
 		utils.LogError(ctx, err, "failed to parse search params")
-		http.Error(w, "invalid search params", http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *AdHandler) Get(w http.ResponseWriter, r *http.Request) {
 	adID, err := uuid.FromString(mux.Vars(r)["id"])
 	if err != nil {
 		utils.LogError(ctx, err, "invalid ad id")
-		http.Error(w, "invalid ad id", http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
@@ -90,10 +91,6 @@ func (h *AdHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type CreateRequest struct {
-	ad.AdForm `json:"form"`
-}
-
 type CreateResponse struct {
 	Ad ad.Ad `json:"ad"`
 }
@@ -101,22 +98,22 @@ type CreateResponse struct {
 func (h *AdHandler) Create(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var req CreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.LogError(ctx, err, utils.MsgErrUnmarshalRequest)
-		http.Error(w, utils.Invalid, http.StatusBadRequest)
-		return
-	}
-
 	photoData := h.getPhotoDataFromRequest(w, r)
 	if photoData == nil {
 		return
 	}
 
-	createdAd, err := h.logic.CreateAd(ctx, req.AdForm, *photoData)
+	adFormJSON := []byte(r.FormValue(h.cfg.CreateFormFieldName))
+	var adForm ad.AdForm
+	if err := json.Unmarshal(adFormJSON, &adForm); err != nil {
+		utils.LogError(ctx, err, utils.MsgErrUnmarshalRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
+		return
+	}
+
+	createdAd, err := h.logic.CreateAd(ctx, adForm, *photoData)
 	if err != nil {
-		utils.LogError(ctx, err, "failed to create ad")
-		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		handleAdError(ctx, w, err)
 		return
 	}
 
@@ -143,7 +140,7 @@ func (h *AdHandler) Update(w http.ResponseWriter, r *http.Request) {
 	adID, err := uuid.FromString(mux.Vars(r)["id"])
 	if err != nil {
 		utils.LogError(ctx, err, "invalid ad id")
-		http.Error(w, "invalid ad id", http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
@@ -179,7 +176,7 @@ func (h *AdHandler) UpdatePhoto(w http.ResponseWriter, r *http.Request) {
 	adID, err := uuid.FromString(mux.Vars(r)["id"])
 	if err != nil {
 		utils.LogError(ctx, err, "invalid ad id")
-		http.Error(w, "invalid ad id", http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
@@ -203,7 +200,7 @@ func (h *AdHandler) UpdatePhoto(w http.ResponseWriter, r *http.Request) {
 }
 
 type CloseRequest struct {
-	Status ad.AdStatus `json:"status"`
+	Status string `json:"status"`
 }
 
 type CloseResponse struct {
@@ -216,13 +213,19 @@ func (h *AdHandler) Close(w http.ResponseWriter, r *http.Request) {
 	adID, err := uuid.FromString(mux.Vars(r)["id"])
 	if err != nil {
 		utils.LogError(ctx, err, "invalid ad id")
-		http.Error(w, "invalid ad id", http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
 	var req CloseRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.LogError(r.Context(), err, utils.MsgErrUnmarshalRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
+		return
+	}
+
+	if req.Status != ad.Realised && req.Status != ad.Cancelled {
+		utils.LogErrorMessage(r.Context(), fmt.Sprintf("invalid status: %s", string(req.Status)))
 		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
@@ -248,7 +251,7 @@ func (h *AdHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	adID, err := uuid.FromString(mux.Vars(r)["id"])
 	if err != nil {
 		utils.LogError(ctx, err, "invalid ad id")
-		http.Error(w, "invalid ad id", http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
@@ -260,7 +263,7 @@ func (h *AdHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSearchParamsFromQuery(query url.Values, cfg config.AdConfig) (ad.SearchParams, error) {
-	result := ad.SearchParams{}
+	result := ad.NewSearchParams(cfg)
 
 	animalIDString := query.Get("animal_id")
 	if animalIDString == "" {
@@ -374,8 +377,8 @@ func (h *AdHandler) getPhotoDataFromRequest(w http.ResponseWriter, r *http.Reque
 	defer r.Body.Close()
 
 	if err := r.ParseMultipartForm(h.cfg.AdPhotoConfig.MaxFormDataSize); err != nil {
-		utils.LogError(ctx, err, "failed to parse multipart form")
-		http.Error(w, "too large size of photo", http.StatusRequestEntityTooLarge)
+		utils.LogError(ctx, err, "failed to parse multipart form, too large")
+		http.Error(w, utils.Invalid, http.StatusRequestEntityTooLarge)
 		return nil
 	}
 	defer func() {
@@ -387,7 +390,7 @@ func (h *AdHandler) getPhotoDataFromRequest(w http.ResponseWriter, r *http.Reque
 	files := r.MultipartForm.File[h.cfg.AdPhotoConfig.RequestFieldName]
 	if len(files) > 1 {
 		utils.LogError(ctx, goerrors.New("multipart form contains multiple files"), "failed to add multiple files")
-		http.Error(w, "multipart form contains multiple files", http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return nil
 	}
 
@@ -401,8 +404,8 @@ func (h *AdHandler) getPhotoDataFromRequest(w http.ResponseWriter, r *http.Reque
 	content, err := io.ReadAll(photoFile)
 	if err != nil && !goerrors.Is(err, io.EOF) {
 		if goerrors.As(err, new(*http.MaxBytesError)) {
-			utils.LogError(ctx, err, "failed to read file content")
-			http.Error(w, "too large size of photo", http.StatusRequestEntityTooLarge)
+			utils.LogError(ctx, err, "failed to read file content, too large")
+			http.Error(w, utils.Invalid, http.StatusRequestEntityTooLarge)
 			return nil
 		}
 	}
@@ -410,7 +413,7 @@ func (h *AdHandler) getPhotoDataFromRequest(w http.ResponseWriter, r *http.Reque
 	photoFileExtension := utils.GetFormat(h.cfg.AdPhotoConfig.FileTypes, content)
 	if photoFileExtension == "" {
 		utils.LogError(ctx, goerrors.New("unknown file extension"), "failed to get file format")
-		http.Error(w, "unknown file extension", http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return nil
 	}
 
@@ -428,6 +431,9 @@ func handleAdError(ctx context.Context, w http.ResponseWriter, err error) {
 	case goerrors.Is(err, ad.ErrNotOwner):
 		utils.LogError(ctx, err, "not owner")
 		http.Error(w, utils.NotFound, http.StatusForbidden)
+	case goerrors.Is(err, ad.ErrInvalidForeignKey):
+		utils.LogError(ctx, err, "invalid foreign key")
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 	default:
 		utils.LogError(ctx, err, "failed to perform operation")
 		http.Error(w, utils.Internal, http.StatusInternalServerError)

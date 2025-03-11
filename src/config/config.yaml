@@ -19,12 +19,13 @@ validation:
 ad:
   max_price: 1000000
   default_search_limit: 20
-  default_search_offset: 20
+  default_search_offset: 0
   max_search_limit: 1000
   photo:
-    max_form_data_size: 31457280 # 30 * 1024 * 1024
+    max_form_data_size: 31457280 # 30 * 1024 * 1024 (30 МБ)
     file_types:
       image/jpeg: .jpeg
       image/webp: .webp
       image/png: .png
     request_field_name: photo
+  create_form_field_name: form

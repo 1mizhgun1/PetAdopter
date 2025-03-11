@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/satori/uuid"
 	"pet_adopter/src/ad"
-	"pet_adopter/src/utils"
 )
 
 const (
@@ -30,7 +29,7 @@ func NewAdPostgres(db pgxtype.Querier) *AdPostgres {
 }
 
 func (repo *AdPostgres) SearchAds(ctx context.Context, params ad.SearchParams) ([]ad.Ad, error) {
-	query := "SELECT * FROM Ad"
+	query := "SELECT id, owner_id, status, photo_url, title, description, price, animal_id, breed_id, contacts, created_at, updated_at FROM Ad"
 	var conditions []string
 	var args []interface{}
 	argIndex := 1
@@ -74,9 +73,6 @@ func (repo *AdPostgres) SearchAds(ctx context.Context, params ad.SearchParams) (
 
 	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d;", argIndex, argIndex+1)
 
-	logger := utils.GetLoggerFromContext(ctx)
-	logger.Info("query: %s", query)
-
 	args = append(args, params.Limit)
 	args = append(args, params.Offset)
 
@@ -101,7 +97,7 @@ func (repo *AdPostgres) SearchAds(ctx context.Context, params ad.SearchParams) (
 
 func (repo *AdPostgres) GetAd(ctx context.Context, id uuid.UUID) (ad.Ad, error) {
 	result := ad.Ad{}
-	if err := repo.db.QueryRow(ctx, getAd, id).Scan(&result); err != nil {
+	if err := repo.db.QueryRow(ctx, getAd, id).Scan(&result.ID, &result.OwnerID, &result.Status, &result.PhotoURL, &result.Title, &result.Description, &result.Price, &result.AnimalID, &result.BreedID, &result.Contacts, &result.CreatedAt, &result.UpdatedAt); err != nil {
 		if goerrors.Is(err, pgx.ErrNoRows) {
 			return result, ad.ErrAdNotFound
 		}
@@ -111,8 +107,11 @@ func (repo *AdPostgres) GetAd(ctx context.Context, id uuid.UUID) (ad.Ad, error) 
 	return result, nil
 }
 
-func (repo *AdPostgres) CreateAd(ctx context.Context, ad ad.Ad) error {
-	if _, err := repo.db.Exec(ctx, createAd, ad.ID, ad.OwnerID, ad.Status, ad.PhotoURL, ad.Title, ad.Description, ad.Price, ad.AnimalID, ad.BreedID, ad.Contacts, ad.CreatedAt, ad.UpdatedAt); err != nil {
+func (repo *AdPostgres) CreateAd(ctx context.Context, adData ad.Ad) error {
+	if _, err := repo.db.Exec(ctx, createAd, adData.ID, adData.OwnerID, adData.Status, adData.PhotoURL, adData.Title, adData.Description, adData.Price, adData.AnimalID, adData.BreedID, adData.Contacts, adData.CreatedAt, adData.UpdatedAt); err != nil {
+		if strings.Contains(err.Error(), "violates foreign key constraint") {
+			return ad.ErrInvalidForeignKey
+		}
 		return errors.Wrap(err, "failed to create ad in postgres")
 	}
 
@@ -181,13 +180,14 @@ func (repo *AdPostgres) UpdateAd(ctx context.Context, id uuid.UUID, form ad.Upda
 		return nil
 	}
 
-	query += strings.Join(conditions, ", ") + fmt.Sprintf(" WHERE id=%d;", argIndex)
-	logger := utils.GetLoggerFromContext(ctx)
-	logger.Info("query: %s", query)
+	query += strings.Join(conditions, ", ") + fmt.Sprintf(" WHERE id=$%d;", argIndex)
 
 	args = append(args, id)
 
 	if _, err := repo.db.Exec(ctx, query, args...); err != nil {
+		if strings.Contains(err.Error(), "violates foreign key constraint") {
+			return ad.ErrInvalidForeignKey
+		}
 		return errors.Wrap(err, "failed to update ad in postgres")
 	}
 

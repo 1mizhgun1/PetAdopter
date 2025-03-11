@@ -86,6 +86,10 @@ type AddLocalityRequest struct {
 	Longitude float64   `json:"longitude"`
 }
 
+type AddLocalityResponse struct {
+	Locality locality.Locality `json:"locality"`
+}
+
 func (h *LocalityHandler) AddLocality(w http.ResponseWriter, r *http.Request) {
 	var req AddLocalityRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -101,7 +105,8 @@ func (h *LocalityHandler) AddLocality(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(localityData); err != nil {
+	resp := AddLocalityResponse{Locality: localityData}
+	if err = json.NewEncoder(w).Encode(resp); err != nil {
 		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return

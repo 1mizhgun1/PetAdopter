@@ -17,8 +17,8 @@ type UserLogic struct {
 	localityRepo locality.LocalityRepo
 }
 
-func NewUserLogic(repo user.UserRepo) *UserLogic {
-	return &UserLogic{repo: repo}
+func NewUserLogic(repo user.UserRepo, localityRepo locality.LocalityRepo) *UserLogic {
+	return &UserLogic{repo: repo, localityRepo: localityRepo}
 }
 
 func (logic *UserLogic) GetUserByID(ctx context.Context, id uuid.UUID) (user.User, error) {
@@ -54,7 +54,7 @@ func (logic *UserLogic) SetLocalityID(ctx context.Context, id uuid.UUID, localit
 		return user.User{}, errors.Wrap(err, "failed to get locality")
 	}
 
-	if err := logic.repo.SetLocalityID(ctx, id, localityID); err != nil {
+	if err = logic.repo.SetLocalityID(ctx, id, localityID); err != nil {
 		return user.User{}, errors.Wrap(err, "failed to set locality id")
 	}
 

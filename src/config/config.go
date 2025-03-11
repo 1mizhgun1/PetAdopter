@@ -56,6 +56,7 @@ type AdConfig struct {
 	DefaultSearchOffset int           `yaml:"default_search_offset"`
 	MaxSearchLimit      int           `yaml:"max_search_limit"`
 	AdPhotoConfig       AdPhotoConfig `yaml:"photo"`
+	CreateFormFieldName string        `yaml:"create_form_field_name"`
 }
 
 type AdPhotoConfig struct {
@@ -79,6 +80,5 @@ func MustLoadConfig(path string, logger *slog.Logger) *Config {
 		return &Config{}
 	}
 
-	logger.Info("Successfully loaded config")
 	return cfg
 }

@@ -33,7 +33,7 @@ func ValidateUsername(username string, cfg config.ValidationConfig) error {
 	}
 
 	for _, ch := range username {
-		if !isEnglishLetter(ch) || !isDigit(ch) || !slices.Contains(extraUsernameChars, ch) {
+		if !isEnglishLetter(ch) && !isDigit(ch) && !slices.Contains(extraUsernameChars, ch) {
 			return fmt.Errorf("username can only have english letters, digits and extra characters: %v", extraUsernameChars)
 		}
 	}
@@ -53,7 +53,7 @@ func ValidatePassword(password string, cfg config.ValidationConfig) error {
 	}
 
 	for _, ch := range password {
-		if !isEnglishLetter(ch) || !isDigit(ch) || !slices.Contains(extraPasswordChars, ch) {
+		if !isEnglishLetter(ch) && !isDigit(ch) && !slices.Contains(extraPasswordChars, ch) {
 			return fmt.Errorf("password can only have english letters, digits and extra characters: %v", extraPasswordChars)
 		}
 	}

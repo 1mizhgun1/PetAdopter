@@ -84,6 +84,10 @@ type AddBreedRequest struct {
 	AnimalID uuid.UUID `json:"animal_id"`
 }
 
+type AddBreedResponse struct {
+	Breed breed.Breed `json:"breed"`
+}
+
 func (h *BreedHandler) AddBreed(w http.ResponseWriter, r *http.Request) {
 	var req AddBreedRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -99,7 +103,8 @@ func (h *BreedHandler) AddBreed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(breedData); err != nil {
+	resp := AddBreedResponse{Breed: breedData}
+	if err = json.NewEncoder(w).Encode(resp); err != nil {
 		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return

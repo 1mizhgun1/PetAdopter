@@ -5,6 +5,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/satori/uuid"
 	"pet_adopter/src/config"
@@ -62,7 +63,7 @@ func (h *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.validateUserCredentials(req.Username, req.Password); err != nil {
 		utils.LogError(r.Context(), err, "invalid credentials")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
@@ -94,7 +95,7 @@ func (h *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		Secure:   h.sessionCfg.ProtectedCookies,
 		Value:    accessToken,
 		HttpOnly: h.sessionCfg.ProtectedCookies,
-		MaxAge:   int(h.sessionCfg.AccessTokenLifeTime),
+		Expires:  time.Now().Local().Add(h.sessionCfg.AccessTokenLifeTime),
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -165,7 +166,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Secure:   h.sessionCfg.ProtectedCookies,
 		Value:    accessToken,
 		HttpOnly: h.sessionCfg.ProtectedCookies,
-		MaxAge:   int(h.sessionCfg.AccessTokenLifeTime),
+		Expires:  time.Now().Local().Add(h.sessionCfg.AccessTokenLifeTime),
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -194,6 +195,10 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type GetUserResponse struct {
+	User user.User `json:"user"`
+}
+
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	userID := utils.GetUserIDFromContext(r.Context())
 	if userID == uuid.Nil {
@@ -209,7 +214,8 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(userData); err != nil {
+	resp := GetUserResponse{User: userData}
+	if err = json.NewEncoder(w).Encode(resp); err != nil {
 		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
@@ -218,6 +224,10 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 type SetLocalityRequest struct {
 	LocalityID uuid.UUID `json:"locality_id"`
+}
+
+type SetLocalityResponse struct {
+	User user.User `json:"user"`
 }
 
 func (h *UserHandler) SetLocality(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +257,8 @@ func (h *UserHandler) SetLocality(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(userData); err != nil {
+	resp := SetLocalityResponse{User: userData}
+	if err = json.NewEncoder(w).Encode(resp); err != nil {
 		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return

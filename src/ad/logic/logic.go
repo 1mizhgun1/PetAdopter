@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	goerrors "errors"
 	"os"
 	"path"
 	"time"
@@ -74,7 +75,7 @@ func (l *AdLogic) GetAd(ctx context.Context, id uuid.UUID) (ad.Ad, ad.AdInfo, er
 }
 
 func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.PhotoParams) (ad.Ad, error) {
-	now := time.Now().Local().Unix()
+	now := time.Now().Local()
 	adID := uuid.NewV4()
 
 	photoBasePath := os.Getenv("PHOTO_BASE_PATH")
@@ -120,6 +121,9 @@ func (l *AdLogic) UpdateAd(ctx context.Context, id uuid.UUID, form ad.UpdateForm
 	}
 
 	if err = l.repo.UpdateAd(ctx, id, form, now); err != nil {
+		if goerrors.Is(err, ad.ErrInvalidForeignKey) {
+			return ad.Ad{}, ad.ErrInvalidForeignKey
+		}
 		return ad.Ad{}, errors.Wrap(err, "failed to update ad")
 	}
 
@@ -169,7 +173,7 @@ func (l *AdLogic) UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm ad.Ph
 	return currentAd, nil
 }
 
-func (l *AdLogic) Close(ctx context.Context, id uuid.UUID, status ad.AdStatus) (ad.Ad, error) {
+func (l *AdLogic) Close(ctx context.Context, id uuid.UUID, status string) (ad.Ad, error) {
 	now := time.Now().Local()
 
 	currentAd, err := l.repo.GetAd(ctx, id)

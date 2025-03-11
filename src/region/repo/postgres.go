@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 	"github.com/satori/uuid"
-	"pet_adopter/src/Region"
+	"pet_adopter/src/region"
 )
 
 const (

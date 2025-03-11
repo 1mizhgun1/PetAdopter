@@ -66,6 +66,10 @@ type AddAnimalRequest struct {
 	Name string `json:"name"`
 }
 
+type AddAnimalResponse struct {
+	Animal animal.Animal `json:"animal"`
+}
+
 func (h *AnimalHandler) AddAnimal(w http.ResponseWriter, r *http.Request) {
 	var req AddAnimalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -81,7 +85,8 @@ func (h *AnimalHandler) AddAnimal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(animalData); err != nil {
+	resp := AddAnimalResponse{Animal: animalData}
+	if err = json.NewEncoder(w).Encode(resp); err != nil {
 		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
