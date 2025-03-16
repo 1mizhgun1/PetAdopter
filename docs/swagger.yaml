@@ -1,0 +1,127 @@
+basePath: /api/v1
+definitions:
+  handlers.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.LoginResponse:
+    properties:
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/user.User'
+    type: object
+  handlers.SignUpRequest:
+    properties:
+      locality_id:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.SignUpResponse:
+    properties:
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/user.User'
+    type: object
+  user.User:
+    properties:
+      locality_id:
+        type: string
+      username:
+        type: string
+    type: object
+host: 127.0.0.1:8080
+info:
+  contact:
+    name: Misha
+    url: http://t.me/KpyTou_HocoK_tg
+  description: API server for PetAdopter.
+  title: PetAdopter API
+  version: "1.0"
+paths:
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      description: login
+      operationId: login
+      parameters:
+      - description: request
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: response 200
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: response 400" "invalid
+          schema:
+            type: string
+        "500":
+          description: response 500" "internal
+          schema:
+            type: string
+      summary: Login
+      tags:
+      - user
+  /user/logout:
+    post:
+      consumes:
+      - application/json
+      description: logout
+      operationId: logout
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+      summary: Logout
+      tags:
+      - user
+  /user/signup:
+    post:
+      consumes:
+      - application/json
+      description: Add a new user to the database
+      operationId: sign-up
+      parameters:
+      - description: request
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: response 200
+          schema:
+            $ref: '#/definitions/handlers.SignUpResponse'
+        "400":
+          description: response 400" "invalid
+          schema:
+            type: string
+        "500":
+          description: response 500" "internal
+          schema:
+            type: string
+      summary: Sign up
+      tags:
+      - user
+swagger: "2.0"

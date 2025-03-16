@@ -81,16 +81,15 @@ func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.Pho
 	photoBasePath := os.Getenv("PHOTO_BASE_PATH")
 	photoFilename := adID.String()
 
-	newPhotoExtension, err := utils.WriteFileOnDisk(
+	if err := utils.WriteFileOnDisk(
 		path.Join(photoBasePath, photoFilename),
 		photoForm.Extension,
 		photoForm.Data,
-	)
-	if err != nil {
+	); err != nil {
 		return ad.Ad{}, errors.Wrap(err, "failed to write photo on disk")
 	}
 
-	form.PhotoURL = photoFilename + newPhotoExtension
+	form.PhotoURL = photoFilename + photoForm.Extension
 
 	result := ad.Ad{
 		ID:        adID,
@@ -101,7 +100,7 @@ func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.Pho
 		UpdatedAt: now,
 	}
 
-	if err = l.repo.CreateAd(ctx, result); err != nil {
+	if err := l.repo.CreateAd(ctx, result); err != nil {
 		return result, errors.Wrap(err, "failed to create ad")
 	}
 
@@ -154,16 +153,15 @@ func (l *AdLogic) UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm ad.Ph
 		return ad.Ad{}, errors.Wrap(err, "failed to remove old photo from disk")
 	}
 
-	newPhotoExtension, err := utils.WriteFileOnDisk(
+	if err = utils.WriteFileOnDisk(
 		path.Join(photoBasePath, photoFilename),
 		photoForm.Extension,
 		photoForm.Data,
-	)
-	if err != nil {
+	); err != nil {
 		return ad.Ad{}, errors.Wrap(err, "failed to write new photo on disk")
 	}
 
-	newPhotoURL := photoFilename + newPhotoExtension
+	newPhotoURL := photoFilename + photoForm.Extension
 
 	if err = l.repo.UpdateAd(ctx, id, ad.UpdateForm{PhotoURL: &newPhotoURL}, now); err != nil {
 		return ad.Ad{}, errors.Wrap(err, "failed to update ad")

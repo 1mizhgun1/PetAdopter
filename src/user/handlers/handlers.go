@@ -53,6 +53,18 @@ type SignUpResponse struct {
 	RefreshToken string    `json:"refresh_token"`
 }
 
+// SignUp
+// @Summary	Sign up
+// @Description	Add a new user to the database
+// @Tags user
+// @ID sign-up
+// @Accept json
+// @Produce	json
+// @Param credentials body SignUpRequest true "request"
+// @Success	200	{object} SignUpResponse	"response 200"
+// @Failure	400	{object} string "response 400" "invalid"
+// @Failure	500	{object} string "response 500" "internal"
+// @Router /user/signup [post]
 func (h *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	req := SignUpRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -122,6 +134,18 @@ type LoginResponse struct {
 	RefreshToken string    `json:"refresh_token"`
 }
 
+// Login
+// @Summary	Login
+// @Description	login
+// @Tags user
+// @ID login
+// @Accept json
+// @Produce	json
+// @Param credentials body LoginRequest true "request"
+// @Success	200	{object} LoginResponse "response 200"
+// @Failure	400	{object} string "response 400" "invalid"
+// @Failure	500	{object} string "response 500" "internal"
+// @Router /user/login [post]
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	req := LoginRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -182,6 +206,16 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Logout
+// @Summary	Logout
+// @Description	logout
+// @Tags user
+// @ID logout
+// @Accept json
+// @Produce	json
+// @Success	200
+// @Failure	401
+// @Router /user/logout [post]
 func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Del("Authorization")
 	http.SetCookie(w, &http.Cookie{

@@ -20,6 +20,9 @@ import (
 	"pet_adopter/src/config"
 	"pet_adopter/src/middleware"
 
+	httpSwagger "github.com/swaggo/http-swagger"
+	_ "pet_adopter/docs"
+
 	handlersOfAd "pet_adopter/src/ad/handlers"
 	logicOfAd "pet_adopter/src/ad/logic"
 	repoOfAd "pet_adopter/src/ad/repo"
@@ -51,6 +54,19 @@ func init() {
 	}
 }
 
+// @title PetAdopter API
+// @version 1.0
+// @description API server for PetAdopter.
+
+// @contact.name Misha
+// @contact.url http://t.me/KpyTou_HocoK_tg
+
+// @securityDefinitions	AuthKey
+// @in					header
+// @name				Authorization
+
+// @host 127.0.0.1:8080
+// @BasePath /api/v1
 func main() {
 	logFile, err := os.OpenFile(os.Getenv("MAIN_LOG_FILE"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -131,6 +147,12 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
+
+	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("none"),
+		httpSwagger.DomID("swagger-ui"),
+	)).Methods(http.MethodGet)
 
 	user := r.PathPrefix("/user").Subrouter()
 	{

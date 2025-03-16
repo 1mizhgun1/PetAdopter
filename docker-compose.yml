@@ -1,4 +1,26 @@
 services:
+  main:
+    container_name: main
+    build:
+      context: .
+      dockerfile: ./build/main.Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    networks:
+      - pet-adopter-network
+    volumes:
+      - type: bind
+        source: ${LOG_DIRECTORY}
+        target: /var/log/PetAdopter
+
   postgres:
     env_file:
       - .env
