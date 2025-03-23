@@ -31,7 +31,7 @@ func NewAdHandler(logic ad.AdLogic, cfg config.AdConfig) *AdHandler {
 }
 
 type SearchResponse struct {
-	Ads []ad.Ad `json:"ads"`
+	Ads []ad.RespAd `json:"ads"`
 }
 
 func (h *AdHandler) Search(w http.ResponseWriter, r *http.Request) {
@@ -60,8 +60,7 @@ func (h *AdHandler) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 type GetResponse struct {
-	Ad   ad.Ad     `json:"ad"`
-	Info ad.AdInfo `json:"info"`
+	Ad ad.RespAd `json:"ad"`
 }
 
 func (h *AdHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -74,16 +73,13 @@ func (h *AdHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundAd, foundAdInfo, err := h.logic.GetAd(ctx, adID)
+	foundAd, err := h.logic.GetAd(ctx, adID)
 	if err != nil {
 		handleAdError(ctx, w, err)
 		return
 	}
 
-	result := GetResponse{
-		Ad:   foundAd,
-		Info: foundAdInfo,
-	}
+	result := GetResponse{Ad: foundAd}
 	if err = json.NewEncoder(w).Encode(result); err != nil {
 		utils.LogError(ctx, err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
@@ -92,7 +88,7 @@ func (h *AdHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 type CreateResponse struct {
-	Ad ad.Ad `json:"ad"`
+	Ad ad.RespAd `json:"ad"`
 }
 
 func (h *AdHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +127,7 @@ type UpdateRequest struct {
 }
 
 type UpdateResponse struct {
-	Ad ad.Ad `json:"ad"`
+	Ad ad.RespAd `json:"ad"`
 }
 
 func (h *AdHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +163,7 @@ func (h *AdHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdatePhotoResponse struct {
-	Ad ad.Ad `json:"ad"`
+	Ad ad.RespAd `json:"ad"`
 }
 
 func (h *AdHandler) UpdatePhoto(w http.ResponseWriter, r *http.Request) {
@@ -204,7 +200,7 @@ type CloseRequest struct {
 }
 
 type CloseResponse struct {
-	Ad ad.Ad `json:"ad"`
+	Ad ad.RespAd `json:"ad"`
 }
 
 func (h *AdHandler) Close(w http.ResponseWriter, r *http.Request) {

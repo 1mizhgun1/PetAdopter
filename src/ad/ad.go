@@ -63,9 +63,15 @@ type PhotoParams struct {
 }
 
 type AdInfo struct {
+	Username     string `json:"username"`
 	AnimalName   string `json:"animal_name"`
 	BreedName    string `json:"breed_name"`
 	LocalityName string `json:"locality_name"`
+}
+
+type RespAd struct {
+	Info      Ad     `json:"info"`
+	ExtraInfo AdInfo `json:"extra_info"`
 }
 
 type SearchParams struct {
@@ -92,19 +98,19 @@ func NewSearchParams(cfg config.AdConfig) SearchParams {
 }
 
 type AdRepo interface {
-	SearchAds(ctx context.Context, params SearchParams) ([]Ad, error)
-	GetAd(ctx context.Context, id uuid.UUID) (Ad, error)
+	SearchAds(ctx context.Context, params SearchParams) ([]RespAd, error)
+	GetAd(ctx context.Context, id uuid.UUID) (RespAd, error)
 	CreateAd(ctx context.Context, ad Ad) error
 	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm, now time.Time) error
 	DeleteAd(ctx context.Context, id uuid.UUID) error
 }
 
 type AdLogic interface {
-	SearchAds(ctx context.Context, params SearchParams) ([]Ad, error)
-	GetAd(ctx context.Context, id uuid.UUID) (Ad, AdInfo, error)
-	CreateAd(ctx context.Context, form AdForm, photoForm PhotoParams) (Ad, error)
-	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm) (Ad, error)
-	UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm PhotoParams) (Ad, error)
-	Close(ctx context.Context, id uuid.UUID, status string) (Ad, error)
+	SearchAds(ctx context.Context, params SearchParams) ([]RespAd, error)
+	GetAd(ctx context.Context, id uuid.UUID) (RespAd, error)
+	CreateAd(ctx context.Context, form AdForm, photoForm PhotoParams) (RespAd, error)
+	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm) (RespAd, error)
+	UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm PhotoParams) (RespAd, error)
+	Close(ctx context.Context, id uuid.UUID, status string) (RespAd, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }

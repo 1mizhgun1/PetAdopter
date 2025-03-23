@@ -20,6 +20,9 @@ services:
       - type: bind
         source: ${LOG_DIRECTORY}
         target: /var/log/PetAdopter
+      - type: bind
+        source: ${PHOTO_BASE_PATH}
+        target: /var/pet_adopter_photos
 
   postgres:
     env_file:
@@ -52,6 +55,27 @@ services:
       - "127.0.0.1:6379:6379"
     env_file:
       - .env
+    networks:
+      - pet-adopter-network
+
+  nginx:
+    container_name: nginx
+    image: nginx
+    depends_on:
+      main:
+        condition: service_started
+    volumes:
+      - type: bind
+        source: /var/log/nginx/
+        target: /var/log/nginx/
+      - type: bind
+        source: /var/pet_adopter_photos/
+        target: /var/pet_adopter_photos/
+      - type: bind
+        source: ./nginx.conf
+        target: /etc/nginx/nginx.conf
+    ports:
+      - "80:80"
     networks:
       - pet-adopter-network
 

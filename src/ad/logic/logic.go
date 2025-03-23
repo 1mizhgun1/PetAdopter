@@ -35,46 +35,15 @@ func NewAdLogic(repo ad.AdRepo, userRepo user.UserRepo, animalRepo animal.Animal
 	}
 }
 
-func (l *AdLogic) SearchAds(ctx context.Context, params ad.SearchParams) ([]ad.Ad, error) {
+func (l *AdLogic) SearchAds(ctx context.Context, params ad.SearchParams) ([]ad.RespAd, error) {
 	return l.repo.SearchAds(ctx, params)
 }
 
-func (l *AdLogic) GetAd(ctx context.Context, id uuid.UUID) (ad.Ad, ad.AdInfo, error) {
-	currentAd, err := l.repo.GetAd(ctx, id)
-	if err != nil {
-		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get ad")
-	}
-
-	currentOwner, err := l.userRepo.GetUserByID(ctx, utils.GetUserIDFromContext(ctx))
-	if err != nil {
-		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get owner")
-	}
-
-	currentLocality, err := l.localityRepo.GetLocalityByID(ctx, currentOwner.LocalityID)
-	if err != nil {
-		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get locality")
-	}
-
-	currentAnimal, err := l.animalRepo.GetAnimalByID(ctx, currentAd.AnimalID)
-	if err != nil {
-		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get animal")
-	}
-
-	currentBreed, err := l.breedRepo.GetBreedByID(ctx, currentAd.BreedID)
-	if err != nil {
-		return ad.Ad{}, ad.AdInfo{}, errors.Wrap(err, "failed to get breed")
-	}
-
-	adInfo := ad.AdInfo{
-		LocalityName: currentLocality.Name,
-		AnimalName:   currentAnimal.Name,
-		BreedName:    currentBreed.Name,
-	}
-
-	return currentAd, adInfo, nil
+func (l *AdLogic) GetAd(ctx context.Context, id uuid.UUID) (ad.RespAd, error) {
+	return l.repo.GetAd(ctx, id)
 }
 
-func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.PhotoParams) (ad.Ad, error) {
+func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.PhotoParams) (ad.RespAd, error) {
 	now := time.Now().Local()
 	adID := uuid.NewV4()
 
@@ -86,7 +55,7 @@ func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.Pho
 		photoForm.Extension,
 		photoForm.Data,
 	); err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to write photo on disk")
+		return ad.RespAd{}, errors.Wrap(err, "failed to write photo on disk")
 	}
 
 	form.PhotoURL = photoFilename + photoForm.Extension
@@ -101,56 +70,51 @@ func (l *AdLogic) CreateAd(ctx context.Context, form ad.AdForm, photoForm ad.Pho
 	}
 
 	if err := l.repo.CreateAd(ctx, result); err != nil {
-		return result, errors.Wrap(err, "failed to create ad")
+		return ad.RespAd{}, errors.Wrap(err, "failed to create ad")
 	}
 
-	return result, nil
+	return l.repo.GetAd(ctx, adID)
 }
 
-func (l *AdLogic) UpdateAd(ctx context.Context, id uuid.UUID, form ad.UpdateForm) (ad.Ad, error) {
+func (l *AdLogic) UpdateAd(ctx context.Context, id uuid.UUID, form ad.UpdateForm) (ad.RespAd, error) {
 	now := time.Now().Local()
 
 	currentAd, err := l.repo.GetAd(ctx, id)
 	if err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to check owner")
+		return ad.RespAd{}, errors.Wrap(err, "failed to check owner")
 	}
 
-	if currentAd.OwnerID != utils.GetUserIDFromContext(ctx) {
-		return ad.Ad{}, ad.ErrNotOwner
+	if currentAd.Info.OwnerID != utils.GetUserIDFromContext(ctx) {
+		return ad.RespAd{}, ad.ErrNotOwner
 	}
 
 	if err = l.repo.UpdateAd(ctx, id, form, now); err != nil {
 		if goerrors.Is(err, ad.ErrInvalidForeignKey) {
-			return ad.Ad{}, ad.ErrInvalidForeignKey
+			return ad.RespAd{}, ad.ErrInvalidForeignKey
 		}
-		return ad.Ad{}, errors.Wrap(err, "failed to update ad")
+		return ad.RespAd{}, errors.Wrap(err, "failed to update ad")
 	}
 
-	result, err := l.repo.GetAd(ctx, id)
-	if err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to get result ad")
-	}
-
-	return result, nil
+	return l.repo.GetAd(ctx, id)
 }
 
-func (l *AdLogic) UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm ad.PhotoParams) (ad.Ad, error) {
+func (l *AdLogic) UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm ad.PhotoParams) (ad.RespAd, error) {
 	now := time.Now().Local()
 
 	currentAd, err := l.repo.GetAd(ctx, id)
 	if err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to check owner")
+		return ad.RespAd{}, errors.Wrap(err, "failed to check owner")
 	}
 
-	if currentAd.OwnerID != utils.GetUserIDFromContext(ctx) {
-		return ad.Ad{}, ad.ErrNotOwner
+	if currentAd.Info.OwnerID != utils.GetUserIDFromContext(ctx) {
+		return ad.RespAd{}, ad.ErrNotOwner
 	}
 
 	photoBasePath := os.Getenv("PHOTO_BASE_PATH")
-	photoFilename := currentAd.ID.String()
+	photoFilename := id.String()
 
-	if err = os.Remove(path.Join(photoBasePath, currentAd.PhotoURL)); err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to remove old photo from disk")
+	if err = os.Remove(path.Join(photoBasePath, currentAd.Info.PhotoURL)); err != nil {
+		return ad.RespAd{}, errors.Wrap(err, "failed to remove old photo from disk")
 	}
 
 	if err = utils.WriteFileOnDisk(
@@ -158,37 +122,35 @@ func (l *AdLogic) UpdatePhoto(ctx context.Context, id uuid.UUID, photoForm ad.Ph
 		photoForm.Extension,
 		photoForm.Data,
 	); err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to write new photo on disk")
+		return ad.RespAd{}, errors.Wrap(err, "failed to write new photo on disk")
 	}
 
 	newPhotoURL := photoFilename + photoForm.Extension
 
 	if err = l.repo.UpdateAd(ctx, id, ad.UpdateForm{PhotoURL: &newPhotoURL}, now); err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to update ad")
+		return ad.RespAd{}, errors.Wrap(err, "failed to update ad")
 	}
 
-	currentAd.PhotoURL = newPhotoURL
-	return currentAd, nil
+	return l.repo.GetAd(ctx, id)
 }
 
-func (l *AdLogic) Close(ctx context.Context, id uuid.UUID, status string) (ad.Ad, error) {
+func (l *AdLogic) Close(ctx context.Context, id uuid.UUID, status string) (ad.RespAd, error) {
 	now := time.Now().Local()
 
 	currentAd, err := l.repo.GetAd(ctx, id)
 	if err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to check owner")
+		return ad.RespAd{}, errors.Wrap(err, "failed to check owner")
 	}
 
-	if currentAd.OwnerID != utils.GetUserIDFromContext(ctx) {
-		return ad.Ad{}, ad.ErrNotOwner
+	if currentAd.Info.OwnerID != utils.GetUserIDFromContext(ctx) {
+		return ad.RespAd{}, ad.ErrNotOwner
 	}
 
 	if err = l.repo.UpdateAd(ctx, id, ad.UpdateForm{Status: &status}, now); err != nil {
-		return ad.Ad{}, errors.Wrap(err, "failed to update ad")
+		return ad.RespAd{}, errors.Wrap(err, "failed to update ad")
 	}
 
-	currentAd.Status = status
-	return currentAd, nil
+	return l.repo.GetAd(ctx, id)
 }
 
 func (l *AdLogic) Delete(ctx context.Context, id uuid.UUID) error {
@@ -199,7 +161,7 @@ func (l *AdLogic) Delete(ctx context.Context, id uuid.UUID) error {
 
 	photoBasePath := os.Getenv("PHOTO_BASE_PATH")
 
-	if err = os.Remove(path.Join(photoBasePath, currentAd.PhotoURL)); err != nil {
+	if err = os.Remove(path.Join(photoBasePath, currentAd.Info.PhotoURL)); err != nil {
 		return errors.Wrap(err, "failed to remove old photo from disk")
 	}
 
