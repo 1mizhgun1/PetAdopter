@@ -29,3 +29,7 @@ ad:
       image/png: .png
     request_field_name: photo
   create_form_field_name: form
+chat_gpt:
+  base_url: https://api.openai.com
+  responses_url: /v1/responses
+  model: gpt-4o-mini

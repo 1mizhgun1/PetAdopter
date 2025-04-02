@@ -14,19 +14,22 @@ import (
 	"github.com/pkg/errors"
 	"github.com/satori/uuid"
 	"pet_adopter/src/ad"
+	"pet_adopter/src/chatgpt"
 	"pet_adopter/src/config"
 	"pet_adopter/src/utils"
 )
 
 type AdHandler struct {
-	logic ad.AdLogic
-	cfg   config.AdConfig
+	logic   ad.AdLogic
+	chatGPT chatgpt.ChatGPT
+	cfg     config.AdConfig
 }
 
-func NewAdHandler(logic ad.AdLogic, cfg config.AdConfig) *AdHandler {
+func NewAdHandler(logic ad.AdLogic, chatGPT chatgpt.ChatGPT, cfg config.AdConfig) *AdHandler {
 	return &AdHandler{
-		logic: logic,
-		cfg:   cfg,
+		logic:   logic,
+		chatGPT: chatGPT,
+		cfg:     cfg,
 	}
 }
 
@@ -98,6 +101,15 @@ func (h *AdHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if photoData == nil {
 		return
 	}
+
+	go func() {
+		photoDescription, err := h.chatGPT.DescribePhoto(*photoData)
+		if err != nil {
+			utils.LogError(ctx, err, "failed to describe photo")
+		}
+
+		fmt.Printf("ANIMAL COLOR ON PHOTO: %s\n", photoDescription.Color)
+	}()
 
 	adFormJSON := []byte(r.FormValue(h.cfg.CreateFormFieldName))
 	var adForm ad.AdForm
@@ -180,6 +192,15 @@ func (h *AdHandler) UpdatePhoto(w http.ResponseWriter, r *http.Request) {
 	if photoData == nil {
 		return
 	}
+
+	go func() {
+		photoDescription, err := h.chatGPT.DescribePhoto(*photoData)
+		if err != nil {
+			utils.LogError(ctx, err, "failed to describe photo")
+		}
+
+		fmt.Printf("ANIMAL COLOR ON PHOTO: %s\n", photoDescription.Color)
+	}()
 
 	updatedAd, err := h.logic.UpdatePhoto(ctx, adID, *photoData)
 	if err != nil {

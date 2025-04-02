@@ -24,6 +24,7 @@ type Config struct {
 	Session    SessionConfig    `yaml:"session"`
 	Validation ValidationConfig `yaml:"validation"`
 	Ad         AdConfig         `yaml:"ad"`
+	ChatGPT    ChatGPTConfig    `yaml:"chat_gpt"`
 }
 
 type MainConfig struct {
@@ -63,6 +64,12 @@ type AdPhotoConfig struct {
 	MaxFormDataSize  int64             `yaml:"max_form_data_size"`
 	FileTypes        map[string]string `yaml:"file_types"`
 	RequestFieldName string            `yaml:"request_field_name"`
+}
+
+type ChatGPTConfig struct {
+	BaseURL      string `yaml:"base_url"`
+	ResponsesURL string `yaml:"responses_url"`
+	Model        string `yaml:"model"`
 }
 
 func MustLoadConfig(path string, logger *slog.Logger) *Config {

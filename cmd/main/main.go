@@ -16,6 +16,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
+	"pet_adopter/src/chatgpt/logic"
+	"pet_adopter/src/chatgpt/request"
 
 	"pet_adopter/src/config"
 	"pet_adopter/src/middleware"
@@ -107,6 +109,9 @@ func main() {
 	}
 	logger.Info("Redis connected")
 
+	chatGPTClient := request.NewChatGPTClient(cfg.ChatGPT)
+	chatGPT := logic.NewChatGPT(chatGPTClient)
+
 	animalRepo := repoOfAnimal.NewAnimalPostgres(postgres)
 	animalLogic := logicOfAnimal.NewAnimalLogic(animalRepo)
 	animalHandler := handlersOfAnimal.NewAnimalHandler(&animalLogic)
@@ -132,7 +137,7 @@ func main() {
 
 	adRepo := repoOfAd.NewAdPostgres(postgres)
 	adLogic := logicOfAd.NewAdLogic(adRepo, userRepo, animalRepo, breedRepo, localityRepo)
-	adHandler := handlersOfAd.NewAdHandler(&adLogic, cfg.Ad)
+	adHandler := handlersOfAd.NewAdHandler(&adLogic, chatGPT, cfg.Ad)
 
 	reqIDMiddleware := middleware.CreateRequestIDMiddleware(logger)
 	sessionMiddleware := middleware.CreateSessionMiddleware(userLogic, sessionLogic, cfg.Session)
