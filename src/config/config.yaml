@@ -33,3 +33,6 @@ chat_gpt:
   base_url: https://api.openai.com
   responses_url: /v1/responses
   model: gpt-4o-mini
+color:
+  max_part_distance: 30
+  max_sum_distance: 60

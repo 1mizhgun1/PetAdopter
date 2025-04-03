@@ -90,6 +90,54 @@ func (h *AdHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type GetSameResponse struct {
+	Ads []ad.RespAd `json:"ads"`
+}
+
+func (h *AdHandler) GetSame(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	adID, err := uuid.FromString(mux.Vars(r)["id"])
+	if err != nil {
+		utils.LogError(ctx, err, "invalid ad id")
+		http.Error(w, utils.Invalid, http.StatusBadRequest)
+		return
+	}
+
+	desc, err := h.chatGPT.GetDescriptionFromDB(ctx, adID)
+	if err != nil {
+		if goerrors.Is(err, chatgpt.ErrDescriptionNotFound) {
+			utils.LogError(ctx, err, "description not found")
+			http.Error(w, utils.NotFound, http.StatusNotFound)
+		} else {
+			utils.LogError(ctx, err, "failed to get description")
+			http.Error(w, utils.Internal, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	color, err := utils.ParseColor(desc.Color)
+	if err != nil {
+		utils.LogError(ctx, err, "failed to parse color")
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+
+	same, err := h.chatGPT.GetSame(ctx, adID, color)
+	if err != nil {
+		utils.LogError(ctx, err, "failed to get same ads")
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+
+	result := GetSameResponse{Ads: same}
+	if err = json.NewEncoder(w).Encode(result); err != nil {
+		utils.LogError(ctx, err, utils.MsgErrMarshalResponse)
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+}
+
 type CreateResponse struct {
 	Ad ad.RespAd `json:"ad"`
 }
@@ -101,15 +149,6 @@ func (h *AdHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if photoData == nil {
 		return
 	}
-
-	go func() {
-		photoDescription, err := h.chatGPT.DescribePhoto(*photoData)
-		if err != nil {
-			utils.LogError(ctx, err, "failed to describe photo")
-		}
-
-		fmt.Printf("ANIMAL COLOR ON PHOTO: %s\n", photoDescription.Color)
-	}()
 
 	adFormJSON := []byte(r.FormValue(h.cfg.CreateFormFieldName))
 	var adForm ad.AdForm
@@ -124,6 +163,15 @@ func (h *AdHandler) Create(w http.ResponseWriter, r *http.Request) {
 		handleAdError(ctx, w, err)
 		return
 	}
+
+	go func() {
+		newCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		if err = h.chatGPT.DescribePhoto(newCtx, createdAd.Info.ID, *photoData, false); err != nil {
+			utils.LogError(ctx, err, "failed to describe photo")
+		}
+	}()
 
 	result := CreateResponse{Ad: createdAd}
 	if err = json.NewEncoder(w).Encode(result); err != nil {
@@ -193,20 +241,20 @@ func (h *AdHandler) UpdatePhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
-		photoDescription, err := h.chatGPT.DescribePhoto(*photoData)
-		if err != nil {
-			utils.LogError(ctx, err, "failed to describe photo")
-		}
-
-		fmt.Printf("ANIMAL COLOR ON PHOTO: %s\n", photoDescription.Color)
-	}()
-
 	updatedAd, err := h.logic.UpdatePhoto(ctx, adID, *photoData)
 	if err != nil {
 		handleAdError(ctx, w, err)
 		return
 	}
+
+	go func() {
+		newCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		if err = h.chatGPT.DescribePhoto(newCtx, updatedAd.Info.ID, *photoData, true); err != nil {
+			utils.LogError(ctx, err, "failed to describe photo")
+		}
+	}()
 
 	result := UpdatePhotoResponse{Ad: updatedAd}
 	if err = json.NewEncoder(w).Encode(result); err != nil {
@@ -274,6 +322,12 @@ func (h *AdHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err = h.logic.Delete(ctx, adID); err != nil {
 		utils.LogError(ctx, err, "failed to delete ad")
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+
+	if err = h.chatGPT.DeleteDescription(ctx, adID); err != nil {
+		utils.LogError(ctx, err, "failed to delete description")
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
 	}

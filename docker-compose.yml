@@ -58,9 +58,9 @@ services:
   nginx:
     container_name: nginx
     image: nginx
-    depends_on:
-      main:
-        condition: service_started
+#    depends_on:
+#      main:
+#        condition: service_started
     volumes:
       - type: bind
         source: /var/log/nginx/

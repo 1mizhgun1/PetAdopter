@@ -69,6 +69,13 @@ CREATE TABLE IF NOT EXISTS History (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS GptDescription (
+    id UUID PRIMARY KEY,
+    color TEXT CONSTRAINT color_length CHECK (char_length(color) <= 32),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS locality_region_id_idx ON Locality (region_id);
 CREATE INDEX IF NOT EXISTS breed_animal_id_idx ON Breed (animal_id);
 CREATE INDEX IF NOT EXISTS ad_status_idx ON Ad (status);

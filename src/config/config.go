@@ -25,6 +25,7 @@ type Config struct {
 	Validation ValidationConfig `yaml:"validation"`
 	Ad         AdConfig         `yaml:"ad"`
 	ChatGPT    ChatGPTConfig    `yaml:"chat_gpt"`
+	Color      ColorConfig      `yaml:"color"`
 }
 
 type MainConfig struct {
@@ -70,6 +71,11 @@ type ChatGPTConfig struct {
 	BaseURL      string `yaml:"base_url"`
 	ResponsesURL string `yaml:"responses_url"`
 	Model        string `yaml:"model"`
+}
+
+type ColorConfig struct {
+	MaxPartDistance int64 `yaml:"max_part_distance"`
+	MaxSumDistance  int64 `yaml:"max_sum_distance"`
 }
 
 func MustLoadConfig(path string, logger *slog.Logger) *Config {

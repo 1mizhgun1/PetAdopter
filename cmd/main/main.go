@@ -37,6 +37,8 @@ import (
 	logicOfBreed "pet_adopter/src/breed/logic"
 	repoOfBreed "pet_adopter/src/breed/repo"
 
+	chatGPTRepo "pet_adopter/src/chatgpt/repo"
+
 	handlersOfLocality "pet_adopter/src/locality/handlers"
 	logicOfLocality "pet_adopter/src/locality/logic"
 	repoOfLocality "pet_adopter/src/locality/repo"
@@ -109,9 +111,6 @@ func main() {
 	}
 	logger.Info("Redis connected")
 
-	chatGPTClient := request.NewChatGPTClient(cfg.ChatGPT)
-	chatGPT := logic.NewChatGPT(chatGPTClient)
-
 	animalRepo := repoOfAnimal.NewAnimalPostgres(postgres)
 	animalLogic := logicOfAnimal.NewAnimalLogic(animalRepo)
 	animalHandler := handlersOfAnimal.NewAnimalHandler(&animalLogic)
@@ -137,6 +136,11 @@ func main() {
 
 	adRepo := repoOfAd.NewAdPostgres(postgres)
 	adLogic := logicOfAd.NewAdLogic(adRepo, userRepo, animalRepo, breedRepo, localityRepo)
+
+	chatGPTClient := request.NewChatGPTClient(cfg.ChatGPT)
+	chaGPTRepo := chatGPTRepo.NewDescriptionPostgres(postgres)
+	chatGPT := logic.NewChatGPT(chatGPTClient, chaGPTRepo, adRepo, *cfg)
+
 	adHandler := handlersOfAd.NewAdHandler(&adLogic, chatGPT, cfg.Ad)
 
 	reqIDMiddleware := middleware.CreateRequestIDMiddleware(logger)
@@ -178,6 +182,8 @@ func main() {
 		ads.Handle("", http.HandlerFunc(adHandler.Search)).
 			Methods(http.MethodGet, http.MethodOptions)
 		ads.Handle("/{id}", http.HandlerFunc(adHandler.Get)).
+			Methods(http.MethodGet, http.MethodOptions)
+		ads.Handle("/{id}/same", http.HandlerFunc(adHandler.GetSame)).
 			Methods(http.MethodGet, http.MethodOptions)
 		ads.Handle("/create", sessionMiddleware(http.HandlerFunc(adHandler.Create))).
 			Methods(http.MethodPost, http.MethodOptions)
