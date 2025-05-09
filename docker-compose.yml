@@ -58,16 +58,16 @@ services:
   nginx:
     container_name: nginx
     image: nginx
-#    depends_on:
-#      main:
-#        condition: service_started
+    restart: always
+    env_file:
+      - .env
     volumes:
       - type: bind
         source: /var/log/nginx/
         target: /var/log/nginx/
       - type: bind
-        source: /var/pet_adopter_photos/
-        target: /var/pet_adopter_photos/
+        source: ${PHOTO_BASE_PATH}
+        target: /var/pet_adopter_photos
       - type: bind
         source: ./nginx.conf
         target: /etc/nginx/nginx.conf
