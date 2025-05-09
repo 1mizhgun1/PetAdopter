@@ -18,7 +18,7 @@ type User struct {
 	ID           uuid.UUID `json:"-"`
 	Username     string    `json:"username"`
 	PasswordHash string    `json:"-"`
-	LocalityID   uuid.UUID `json:"locality_id"`
+	LocalityID   uuid.UUID `json:"-"`
 	CreatedAt    time.Time `json:"-"`
 }
 
@@ -41,7 +41,7 @@ type SessionRepo interface {
 type UserLogic interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
-	CreateUser(ctx context.Context, username string, password string, localityID uuid.UUID) (User, error)
+	CreateUser(ctx context.Context, username string, password string) (User, error)
 	SetLocalityID(ctx context.Context, id uuid.UUID, localityID uuid.UUID) (User, error)
 	CheckPassword(ctx context.Context, username string, password string) (User, bool, error)
 }

@@ -20,15 +20,16 @@ SELECT
 	Ad.id, Ad.owner_id, Ad.status,
 	Ad.photo_url, Ad.title, Ad.description, Ad.price, Ad.animal_id, Ad.breed_id, Ad.contacts,
 	Ad.created_at, Ad.updated_at,
-	MyUser.username, Animal.name as animal_name, Breed.name as breed_name, Locality.name as locality_name
-FROM
-    Ad, MyUser, Animal, Breed, Locality
-WHERE
-    Ad.id=$1
-	AND Ad.owner_id = MyUser.id
-	AND Ad.animal_id = Animal.id
-	AND Ad.breed_id = Breed.id
-	AND MyUser.locality_id = Locality.id;
+	MyUser.username,
+	Animal.name AS animal_name,
+	Breed.name AS breed_name,
+	COALESCE(Locality.name, '') AS locality_name
+FROM Ad
+JOIN MyUser ON Ad.owner_id = MyUser.id
+JOIN Animal ON Ad.animal_id = Animal.id
+JOIN Breed ON Ad.breed_id = Breed.id
+LEFT JOIN Locality ON MyUser.locality_id = Locality.id
+WHERE Ad.id = $1;
 `
 
 	createAd = "INSERT INTO Ad(id, owner_id, status, photo_url, title, description, price, animal_id, breed_id, contacts, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);"
@@ -43,20 +44,23 @@ func NewAdPostgres(db pgxtype.Querier) *AdPostgres {
 	return &AdPostgres{db: db}
 }
 
-func (repo *AdPostgres) SearchAds(ctx context.Context, params ad.SearchParams) ([]ad.RespAd, error) {
+func (repo *AdPostgres) SearchAds(ctx context.Context, params ad.SearchParams, extra ad.SearchExtra) ([]ad.RespAd, error) {
 	query := `
 SELECT
 	Ad.id, Ad.owner_id, Ad.status,
 	Ad.photo_url, Ad.title, Ad.description, Ad.price, Ad.animal_id, Ad.breed_id, Ad.contacts,
 	Ad.created_at, Ad.updated_at,
-	MyUser.username, Animal.name as animal_name, Breed.name as breed_name, Locality.name as locality_name
-FROM
-    Ad, MyUser, Animal, Breed, Locality
-WHERE
-	Ad.owner_id = MyUser.id
-	AND Ad.animal_id = Animal.id
-	AND Ad.breed_id = Breed.id
-	AND MyUser.locality_id = Locality.id
+	MyUser.username,
+	Animal.name AS animal_name,
+	Breed.name AS breed_name,
+	COALESCE(Locality.name, '') AS locality_name,
+	COALESCE(Locality.latitude, NULL) AS locality_latitude,
+	COALESCE(Locality.longitude, NULL) AS locality_longitude
+FROM Ad
+JOIN MyUser ON Ad.owner_id = MyUser.id
+JOIN Animal ON Ad.animal_id = Animal.id
+JOIN Breed ON Ad.breed_id = Breed.id
+LEFT JOIN Locality ON MyUser.locality_id = Locality.id
 `
 
 	var conditions []string
@@ -83,8 +87,7 @@ WHERE
 
 	if params.MinPrice != nil && params.MaxPrice != nil {
 		conditions = append(conditions, fmt.Sprintf("Ad.price BETWEEN $%d AND $%d", argIndex, argIndex+1))
-		args = append(args, *params.MinPrice)
-		args = append(args, *params.MaxPrice)
+		args = append(args, *params.MinPrice, *params.MaxPrice)
 		argIndex += 2
 	} else if params.MinPrice != nil {
 		conditions = append(conditions, fmt.Sprintf("Ad.price >= $%d", argIndex))
@@ -96,14 +99,18 @@ WHERE
 		argIndex++
 	}
 
+	if params.Radius != nil {
+		conditions = append(conditions, fmt.Sprintf("(Locality.latitude IS NULL OR Locality.longitude IS NULL OR haversine_distance(Locality.latitude, Locality.longitude, $%d, $%d) <= $%d)", argIndex, argIndex+1, argIndex+2))
+		args = append(args, extra.Latitude, extra.Longitude, *params.Radius)
+		argIndex += 3
+	}
+
 	if len(conditions) > 0 {
-		query += " AND " + strings.Join(conditions, " AND ")
+		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d;", argIndex, argIndex+1)
-
-	args = append(args, params.Limit)
-	args = append(args, params.Offset)
+	args = append(args, params.Limit, params.Offset)
 
 	result := make([]ad.RespAd, 0)
 
@@ -117,8 +124,10 @@ WHERE
 		var (
 			row      ad.Ad
 			rowExtra ad.AdInfo
+			lat      *float64
+			lon      *float64
 		)
-		if err = rows.Scan(&row.ID, &row.OwnerID, &row.Status, &row.PhotoURL, &row.Title, &row.Description, &row.Price, &row.AnimalID, &row.BreedID, &row.Contacts, &row.CreatedAt, &row.UpdatedAt, &rowExtra.Username, &rowExtra.AnimalName, &rowExtra.BreedName, &rowExtra.LocalityName); err != nil {
+		if err = rows.Scan(&row.ID, &row.OwnerID, &row.Status, &row.PhotoURL, &row.Title, &row.Description, &row.Price, &row.AnimalID, &row.BreedID, &row.Contacts, &row.CreatedAt, &row.UpdatedAt, &rowExtra.Username, &rowExtra.AnimalName, &rowExtra.BreedName, &rowExtra.LocalityName, &lat, &lon); err != nil {
 			return result, errors.Wrap(err, "failed to parse ad")
 		}
 		result = append(result, ad.RespAd{Info: row, ExtraInfo: rowExtra})

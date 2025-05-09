@@ -35,8 +35,8 @@ func NewAdLogic(repo ad.AdRepo, userRepo user.UserRepo, animalRepo animal.Animal
 	}
 }
 
-func (l *AdLogic) SearchAds(ctx context.Context, params ad.SearchParams) ([]ad.RespAd, error) {
-	return l.repo.SearchAds(ctx, params)
+func (l *AdLogic) SearchAds(ctx context.Context, params ad.SearchParams, extra ad.SearchExtra) ([]ad.RespAd, error) {
+	return l.repo.SearchAds(ctx, params, extra)
 }
 
 func (l *AdLogic) GetAd(ctx context.Context, id uuid.UUID) (ad.RespAd, error) {

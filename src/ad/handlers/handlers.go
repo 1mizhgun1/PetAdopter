@@ -16,20 +16,26 @@ import (
 	"pet_adopter/src/ad"
 	"pet_adopter/src/chatgpt"
 	"pet_adopter/src/config"
+	"pet_adopter/src/locality"
+	"pet_adopter/src/user"
 	"pet_adopter/src/utils"
 )
 
 type AdHandler struct {
-	logic   ad.AdLogic
-	chatGPT chatgpt.ChatGPT
-	cfg     config.AdConfig
+	logic         ad.AdLogic
+	userLogic     user.UserLogic
+	localityLogic locality.LocalityLogic
+	chatGPT       chatgpt.ChatGPT
+	cfg           config.AdConfig
 }
 
-func NewAdHandler(logic ad.AdLogic, chatGPT chatgpt.ChatGPT, cfg config.AdConfig) *AdHandler {
+func NewAdHandler(logic ad.AdLogic, userLogic user.UserLogic, localityLogic locality.LocalityLogic, chatGPT chatgpt.ChatGPT, cfg config.AdConfig) *AdHandler {
 	return &AdHandler{
-		logic:   logic,
-		chatGPT: chatGPT,
-		cfg:     cfg,
+		logic:         logic,
+		userLogic:     userLogic,
+		localityLogic: localityLogic,
+		chatGPT:       chatGPT,
+		cfg:           cfg,
 	}
 }
 
@@ -47,7 +53,26 @@ func (h *AdHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundAds, err := h.logic.SearchAds(ctx, searchParams)
+	searchExtra := ad.SearchExtra{}
+	if searchParams.Radius != nil {
+		userID := utils.GetUserIDFromContext(ctx)
+		userInfo, err := h.userLogic.GetUserByID(ctx, userID)
+		if err == nil {
+			loc, err := h.localityLogic.GetLocalityByID(ctx, userInfo.LocalityID)
+			if err == nil {
+				searchExtra.Latitude = loc.Latitude
+				searchExtra.Longitude = loc.Longitude
+			} else {
+				utils.LogError(ctx, err, "failed to get user location")
+				searchParams.Radius = nil
+			}
+		} else {
+			utils.LogError(ctx, err, fmt.Sprintf("failed to get user by ID=%s", userID.String()))
+			searchParams.Radius = nil
+		}
+	}
+
+	foundAds, err := h.logic.SearchAds(ctx, searchParams, searchExtra)
 	if err != nil {
 		utils.LogError(ctx, err, "failed to search ads")
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
@@ -380,6 +405,18 @@ func getSearchParamsFromQuery(query url.Values, cfg config.AdConfig) (ad.SearchP
 		}
 		maxPrice := int(maxPrice64)
 		result.MaxPrice = &maxPrice
+	}
+
+	radiusString := query.Get("radius")
+	if radiusString == "" {
+		result.Radius = nil
+	} else {
+		radius64, err := strconv.ParseInt(radiusString, 10, 64)
+		if err != nil {
+			return result, errors.Wrap(err, "failed to parse radius")
+		}
+		radius := int(radius64)
+		result.Radius = &radius
 	}
 
 	limitString := query.Get("limit")

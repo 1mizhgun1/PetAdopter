@@ -29,12 +29,12 @@ func (logic *UserLogic) GetUserByUsername(ctx context.Context, username string) 
 	return logic.repo.GetUserByUsername(ctx, username)
 }
 
-func (logic *UserLogic) CreateUser(ctx context.Context, username string, password string, localityID uuid.UUID) (user.User, error) {
+func (logic *UserLogic) CreateUser(ctx context.Context, username string, password string) (user.User, error) {
 	userData := user.User{
 		ID:           uuid.NewV4(),
 		Username:     username,
 		PasswordHash: utils.GetPasswordHash(password),
-		LocalityID:   localityID,
+		LocalityID:   uuid.Nil,
 		CreatedAt:    time.Now().Local(),
 	}
 

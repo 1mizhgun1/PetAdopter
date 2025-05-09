@@ -80,9 +80,15 @@ type SearchParams struct {
 	BreedID  *uuid.UUID `json:"breed_id"`
 	MinPrice *int       `json:"min_price"`
 	MaxPrice *int       `json:"max_price"`
+	Radius   *int       `json:"radius"`
 
 	Limit  int `json:"limit"`
 	Offset int `json:"offset"`
+}
+
+type SearchExtra struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
 func NewSearchParams(cfg config.AdConfig) SearchParams {
@@ -92,13 +98,14 @@ func NewSearchParams(cfg config.AdConfig) SearchParams {
 		BreedID:  nil,
 		MinPrice: nil,
 		MaxPrice: nil,
+		Radius:   nil,
 		Limit:    cfg.DefaultSearchLimit,
 		Offset:   cfg.DefaultSearchOffset,
 	}
 }
 
 type AdRepo interface {
-	SearchAds(ctx context.Context, params SearchParams) ([]RespAd, error)
+	SearchAds(ctx context.Context, params SearchParams, extra SearchExtra) ([]RespAd, error)
 	GetAd(ctx context.Context, id uuid.UUID) (RespAd, error)
 	CreateAd(ctx context.Context, ad Ad) error
 	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm, now time.Time) error
@@ -106,7 +113,7 @@ type AdRepo interface {
 }
 
 type AdLogic interface {
-	SearchAds(ctx context.Context, params SearchParams) ([]RespAd, error)
+	SearchAds(ctx context.Context, params SearchParams, extra SearchExtra) ([]RespAd, error)
 	GetAd(ctx context.Context, id uuid.UUID) (RespAd, error)
 	CreateAd(ctx context.Context, form AdForm, photoForm PhotoParams) (RespAd, error)
 	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm) (RespAd, error)

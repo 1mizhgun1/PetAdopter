@@ -81,3 +81,26 @@ CREATE INDEX IF NOT EXISTS breed_animal_id_idx ON Breed (animal_id);
 CREATE INDEX IF NOT EXISTS ad_status_idx ON Ad (status);
 CREATE INDEX IF NOT EXISTS ad_animal_id_idx ON Ad (animal_id);
 CREATE INDEX IF NOT EXISTS ad_breed_id_idx ON Ad (breed_id);
+
+CREATE OR REPLACE FUNCTION haversine_distance(
+    lat1 FLOAT, lon1 FLOAT,
+    lat2 FLOAT, lon2 FLOAT
+) RETURNS FLOAT AS $$
+DECLARE
+    r CONSTANT FLOAT := 6371; -- Радиус Земли в километрах
+    dlat FLOAT := radians(lat2 - lat1);
+    dlon FLOAT := radians(lon2 - lon1);
+    a FLOAT;
+    c FLOAT;
+    dist FLOAT;
+BEGIN
+    a := sin(dlat / 2)^2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2)^2;
+    c := 2 * atan2(sqrt(a), sqrt(1 - a));
+    dist := r * c;
+
+    -- Логирование входных и выходного значения
+    RAISE NOTICE 'Haversine input: (%, %), (%, %) => dist: % km', lat1, lon1, lat2, lon2, dist;
+
+    RETURN dist;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;

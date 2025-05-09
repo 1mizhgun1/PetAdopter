@@ -17,14 +17,16 @@ import (
 type UserHandler struct {
 	user          user.UserLogic
 	session       user.SessionLogic
+	locality      locality.LocalityLogic
 	sessionCfg    config.SessionConfig
 	validationCfg config.ValidationConfig
 }
 
-func NewUserHandler(user user.UserLogic, session user.SessionLogic, sessionCfg config.SessionConfig, validationCfg config.ValidationConfig) *UserHandler {
+func NewUserHandler(user user.UserLogic, session user.SessionLogic, locality locality.LocalityLogic, sessionCfg config.SessionConfig, validationCfg config.ValidationConfig) *UserHandler {
 	return &UserHandler{
 		user:          user,
 		session:       session,
+		locality:      locality,
 		sessionCfg:    sessionCfg,
 		validationCfg: validationCfg,
 	}
@@ -43,14 +45,14 @@ func (h *UserHandler) validateUserCredentials(username string, password string) 
 }
 
 type SignUpRequest struct {
-	Username   string     `json:"username"`
-	Password   string     `json:"password"`
-	LocalityID *uuid.UUID `json:"locality_id,omitempty"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type SignUpResponse struct {
 	User         user.User `json:"user"`
 	RefreshToken string    `json:"refresh_token"`
+	Locality     string    `json:"locality"`
 }
 
 // SignUp
@@ -79,11 +81,7 @@ func (h *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	localityID := uuid.Nil
-	if req.LocalityID != nil {
-		localityID = *req.LocalityID
-	}
-	userData, err := h.user.CreateUser(r.Context(), req.Username, req.Password, localityID)
+	userData, err := h.user.CreateUser(r.Context(), req.Username, req.Password)
 	if err != nil {
 		if goerrors.Is(err, user.ErrUserAlreadyExists) {
 			utils.LogErrorMessage(r.Context(), user.ErrUserAlreadyExists.Error())
@@ -116,6 +114,7 @@ func (h *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	resp := SignUpResponse{
 		User:         userData,
 		RefreshToken: refreshToken,
+		Locality:     "",
 	}
 	if err = json.NewEncoder(w).Encode(resp); err != nil {
 		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
@@ -132,6 +131,7 @@ type LoginRequest struct {
 type LoginResponse struct {
 	User         user.User `json:"user"`
 	RefreshToken string    `json:"refresh_token"`
+	Locality     string    `json:"locality"`
 }
 
 // Login
@@ -147,39 +147,41 @@ type LoginResponse struct {
 // @Failure	500	{object} string "response 500" "internal"
 // @Router /user/login [post]
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	req := LoginRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.LogError(r.Context(), err, utils.MsgErrUnmarshalRequest)
+		utils.LogError(ctx, err, utils.MsgErrUnmarshalRequest)
 		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
 	if err := h.validateUserCredentials(req.Username, req.Password); err != nil {
-		utils.LogError(r.Context(), err, "invalid credentials")
+		utils.LogError(ctx, err, "invalid credentials")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	userData, correctPassword, err := h.user.CheckPassword(r.Context(), req.Username, req.Password)
+	userData, correctPassword, err := h.user.CheckPassword(ctx, req.Username, req.Password)
 	if err != nil {
 		if goerrors.Is(err, user.ErrUserNotFound) {
-			utils.LogErrorMessage(r.Context(), user.ErrUserNotFound.Error())
+			utils.LogErrorMessage(ctx, user.ErrUserNotFound.Error())
 			http.Error(w, "incorrect username or password", http.StatusBadRequest)
 		} else {
-			utils.LogError(r.Context(), err, "failed to check password")
+			utils.LogError(ctx, err, "failed to check password")
 			http.Error(w, utils.Internal, http.StatusInternalServerError)
 		}
 		return
 	}
 	if !correctPassword {
-		utils.LogError(r.Context(), err, "incorrect password")
+		utils.LogError(ctx, err, "incorrect password")
 		http.Error(w, "incorrect username or password", http.StatusBadRequest)
 		return
 	}
 
-	accessToken, refreshToken, err := h.session.SetSession(r.Context(), userData.Username)
+	accessToken, refreshToken, err := h.session.SetSession(ctx, userData.Username)
 	if err != nil {
-		utils.LogError(r.Context(), err, "failed to set session")
+		utils.LogError(ctx, err, "failed to set session")
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
 	}
@@ -199,8 +201,21 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		User:         userData,
 		RefreshToken: refreshToken,
 	}
+
+	if userData.LocalityID != uuid.Nil {
+		loc, err := h.locality.GetLocalityByID(ctx, userData.LocalityID)
+		if err != nil {
+			utils.LogError(ctx, err, "failed to get locality")
+			resp.Locality = ""
+		} else {
+			resp.Locality = loc.Name
+		}
+	} else {
+		resp.Locality = ""
+	}
+
 	if err = json.NewEncoder(w).Encode(resp); err != nil {
-		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
+		utils.LogError(ctx, err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
 	}
@@ -257,43 +272,54 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 type SetLocalityRequest struct {
-	LocalityID uuid.UUID `json:"locality_id"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
 type SetLocalityResponse struct {
-	User user.User `json:"user"`
+	User     user.User `json:"user"`
+	Locality string    `json:"locality"`
 }
 
 func (h *UserHandler) SetLocality(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	userID := utils.GetUserIDFromContext(r.Context())
 	if userID == uuid.Nil {
-		utils.LogErrorMessage(r.Context(), "user not found in context")
+		utils.LogErrorMessage(ctx, "user not found in context")
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
 	}
 
 	req := SetLocalityRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.LogError(r.Context(), err, utils.MsgErrUnmarshalRequest)
+		utils.LogError(ctx, err, utils.MsgErrUnmarshalRequest)
 		http.Error(w, utils.Invalid, http.StatusBadRequest)
 		return
 	}
 
-	userData, err := h.user.SetLocalityID(r.Context(), userID, req.LocalityID)
+	loc, err := h.locality.GetLocalityByCoords(ctx, req.Latitude, req.Longitude)
 	if err != nil {
-		if goerrors.Is(err, locality.ErrLocalityNotFound) {
-			utils.LogError(r.Context(), err, "locality not found")
-			http.Error(w, utils.Invalid, http.StatusBadRequest)
-			return
-		}
-		utils.LogError(r.Context(), err, "failed to set locality")
+		utils.LogError(ctx, err, "failed to get locality by coords")
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
 	}
 
-	resp := SetLocalityResponse{User: userData}
+	userData, err := h.user.SetLocalityID(ctx, userID, loc.ID)
+	if err != nil {
+		if goerrors.Is(err, locality.ErrLocalityNotFound) {
+			utils.LogError(ctx, err, "locality not found")
+			http.Error(w, utils.Invalid, http.StatusBadRequest)
+			return
+		}
+		utils.LogError(ctx, err, "failed to set locality")
+		http.Error(w, utils.Internal, http.StatusInternalServerError)
+		return
+	}
+
+	resp := SetLocalityResponse{User: userData, Locality: loc.Name}
 	if err = json.NewEncoder(w).Encode(resp); err != nil {
-		utils.LogError(r.Context(), err, utils.MsgErrMarshalResponse)
+		utils.LogError(ctx, err, utils.MsgErrMarshalResponse)
 		http.Error(w, utils.Internal, http.StatusInternalServerError)
 		return
 	}

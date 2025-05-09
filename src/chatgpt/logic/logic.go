@@ -61,7 +61,7 @@ func (c *ChatGPT) GetSame(ctx context.Context, id uuid.UUID, color utils.Color) 
 		}
 	}
 
-	ads, err := c.adRepo.SearchAds(ctx, ad.NewSearchParams(c.cfg.Ad))
+	ads, err := c.adRepo.SearchAds(ctx, ad.NewSearchParams(c.cfg.Ad), ad.SearchExtra{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to search ads")
 	}

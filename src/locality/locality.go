@@ -30,6 +30,7 @@ type LocalityRepo interface {
 type LocalityLogic interface {
 	GetLocalities(ctx context.Context) ([]Locality, error)
 	GetLocalityByID(ctx context.Context, id uuid.UUID) (Locality, error)
+	GetLocalityByCoords(ctx context.Context, latitude float64, longitude float64) (Locality, error)
 	GetLocalitiesByRegionID(ctx context.Context, regionID uuid.UUID) ([]Locality, error)
 	AddLocality(ctx context.Context, name string, regionID uuid.UUID, latitude float64, longitude float64) (Locality, error)
 	RemoveLocalityByID(ctx context.Context, id uuid.UUID) error

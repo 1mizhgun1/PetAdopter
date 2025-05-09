@@ -79,7 +79,7 @@ func main() {
 	}
 	defer logFile.Close()
 
-	logger := slog.New(slog.NewJSONHandler(io.MultiWriter(logFile, os.Stdout), &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := slog.New(slog.NewJSONHandler(io.MultiWriter(logFile, os.Stdout), &slog.HandlerOptions{Level: slog.LevelDebug}))
 	logger.Info("Log file opened")
 
 	cfg := config.MustLoadConfig(os.Getenv("CONFIG_FILE"), logger)
@@ -132,7 +132,7 @@ func main() {
 
 	userRepo := repoOfUser.NewUserPostgres(postgres)
 	userLogic := logicOfUser.NewUserLogic(userRepo, localityRepo)
-	userHandler := handlersOfUser.NewUserHandler(userLogic, sessionLogic, cfg.Session, cfg.Validation)
+	userHandler := handlersOfUser.NewUserHandler(userLogic, sessionLogic, &localityLogic, cfg.Session, cfg.Validation)
 
 	adRepo := repoOfAd.NewAdPostgres(postgres)
 	adLogic := logicOfAd.NewAdLogic(adRepo, userRepo, animalRepo, breedRepo, localityRepo)
@@ -141,7 +141,7 @@ func main() {
 	chaGPTRepo := chatGPTRepo.NewDescriptionPostgres(postgres)
 	chatGPT := logic.NewChatGPT(chatGPTClient, chaGPTRepo, adRepo, *cfg)
 
-	adHandler := handlersOfAd.NewAdHandler(&adLogic, chatGPT, cfg.Ad)
+	adHandler := handlersOfAd.NewAdHandler(&adLogic, userLogic, &localityLogic, chatGPT, cfg.Ad)
 
 	reqIDMiddleware := middleware.CreateRequestIDMiddleware(logger)
 	sessionMiddleware := middleware.CreateSessionMiddleware(userLogic, sessionLogic, cfg.Session)
@@ -179,7 +179,7 @@ func main() {
 
 	ads := r.PathPrefix("/ads").Subrouter()
 	{
-		ads.Handle("", http.HandlerFunc(adHandler.Search)).
+		ads.Handle("", sessionMiddleware(http.HandlerFunc(adHandler.Search))).
 			Methods(http.MethodGet, http.MethodOptions)
 		ads.Handle("/{id}", http.HandlerFunc(adHandler.Get)).
 			Methods(http.MethodGet, http.MethodOptions)
