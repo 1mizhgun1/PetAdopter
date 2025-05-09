@@ -67,6 +67,10 @@ LEFT JOIN Locality ON MyUser.locality_id = Locality.id
 	var args []interface{}
 	argIndex := 1
 
+	if !params.AllStatuses {
+		conditions = append(conditions, "Ad.status = 'A'")
+	}
+
 	if params.OwnerID != nil {
 		conditions = append(conditions, fmt.Sprintf("Ad.owner_id=$%d", argIndex))
 		args = append(args, *params.OwnerID)

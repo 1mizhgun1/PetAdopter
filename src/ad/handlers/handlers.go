@@ -361,6 +361,15 @@ func (h *AdHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func getSearchParamsFromQuery(query url.Values, cfg config.AdConfig) (ad.SearchParams, error) {
 	result := ad.NewSearchParams(cfg)
 
+	allStatusesString := query.Get("all_statuses")
+	if allStatusesString != "" {
+		allStatuses, err := strconv.ParseBool(allStatusesString)
+		if err != nil {
+			return result, errors.Wrap(err, "failed to parse all_statuses")
+		}
+		result.AllStatuses = allStatuses
+	}
+
 	animalIDString := query.Get("animal_id")
 	if animalIDString == "" {
 		result.AnimalID = nil

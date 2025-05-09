@@ -82,6 +82,8 @@ type SearchParams struct {
 	MaxPrice *int       `json:"max_price"`
 	Radius   *int       `json:"radius"`
 
+	AllStatuses bool `json:"all_statuses"`
+
 	Limit  int `json:"limit"`
 	Offset int `json:"offset"`
 }
@@ -93,14 +95,15 @@ type SearchExtra struct {
 
 func NewSearchParams(cfg config.AdConfig) SearchParams {
 	return SearchParams{
-		OwnerID:  nil,
-		AnimalID: nil,
-		BreedID:  nil,
-		MinPrice: nil,
-		MaxPrice: nil,
-		Radius:   nil,
-		Limit:    cfg.DefaultSearchLimit,
-		Offset:   cfg.DefaultSearchOffset,
+		OwnerID:     nil,
+		AnimalID:    nil,
+		BreedID:     nil,
+		MinPrice:    nil,
+		MaxPrice:    nil,
+		Radius:      nil,
+		AllStatuses: false,
+		Limit:       cfg.DefaultSearchLimit,
+		Offset:      cfg.DefaultSearchOffset,
 	}
 }
 
