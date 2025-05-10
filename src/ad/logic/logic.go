@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	goerrors "errors"
+	"fmt"
 	"os"
 	"path"
 	"time"
@@ -36,7 +37,50 @@ func NewAdLogic(repo ad.AdRepo, userRepo user.UserRepo, animalRepo animal.Animal
 }
 
 func (l *AdLogic) SearchAds(ctx context.Context, params ad.SearchParams, extra ad.SearchExtra) ([]ad.RespAd, error) {
-	return l.repo.SearchAds(ctx, params, extra)
+	var (
+		best *ad.History
+		err  error
+	)
+
+	userID := utils.GetUserIDFromContext(ctx)
+	if userID != uuid.Nil {
+		best, err = l.repo.GetHistory(ctx, userID)
+		if err != nil {
+			utils.LogError(ctx, err, "failed to get history")
+			best = nil
+		}
+	}
+	extra.Best = best
+
+	resp, err := l.repo.SearchAds(ctx, params, extra)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to search ads")
+	}
+
+	if userID != uuid.Nil && (params.AnimalID != nil || params.BreedID != nil || params.MinPrice != nil || params.MaxPrice != nil || params.Radius != nil) {
+		go func() {
+			row := ad.History{
+				UserID:    userID,
+				AnimalID:  params.AnimalID,
+				BreedID:   params.BreedID,
+				MinPrice:  params.MinPrice,
+				MaxPrice:  params.MaxPrice,
+				Radius:    params.Radius,
+				CreatedAt: time.Now().Local(),
+			}
+
+			newCtx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			if err = l.repo.SaveHistory(newCtx, row); err != nil {
+				fmt.Printf("failed to save history, userID = %s\n", userID.String())
+			} else {
+				fmt.Printf("history saved, userID = %s\n", userID.String())
+			}
+		}()
+	}
+
+	return resp, nil
 }
 
 func (l *AdLogic) GetAd(ctx context.Context, id uuid.UUID) (ad.RespAd, error) {

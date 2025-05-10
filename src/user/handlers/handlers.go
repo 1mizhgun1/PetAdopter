@@ -174,7 +174,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !correctPassword {
-		utils.LogError(ctx, err, "incorrect password")
+		utils.LogErrorMessage(ctx, "incorrect password")
 		http.Error(w, "incorrect username or password", http.StatusBadRequest)
 		return
 	}

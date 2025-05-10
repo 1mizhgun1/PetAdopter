@@ -34,6 +34,18 @@ WHERE Ad.id = $1;
 
 	createAd = "INSERT INTO Ad(id, owner_id, status, photo_url, title, description, price, animal_id, breed_id, contacts, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);"
 	deleteAd = "DELETE FROM Ad WHERE id=$1;"
+
+	getHistory  = "SELECT user_id, animal_id, breed_id, min_price, max_price, radius, created_at FROM History WHERE user_id = $1;"
+	saveHistory = `
+INSERT INTO
+	History(user_id, animal_id, breed_id, min_price, max_price, radius, created_at)
+VALUES
+    ($1, $2, $3, $4, $5, $6, $7)
+ON
+	CONFLICT (user_id) DO
+UPDATE
+    SET animal_id = $2, breed_id = $3, min_price = $4, max_price = $5, radius = $6, created_at = $7
+`
 )
 
 type AdPostgres struct {
@@ -113,6 +125,60 @@ LEFT JOIN Locality ON MyUser.locality_id = Locality.id
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
+	if extra.Best == nil {
+		query += " ORDER BY Ad.updated_at DESC "
+	} else {
+		scoreParts := make([]string, 0)
+
+		if extra.Best.AnimalID == nil {
+			scoreParts = append(scoreParts, "1")
+		} else {
+			scoreParts = append(scoreParts, fmt.Sprintf("CASE WHEN Ad.animal_id = $%d THEN 1 ELSE 0 END", argIndex))
+			args = append(args, *extra.Best.AnimalID)
+			argIndex++
+		}
+
+		if extra.Best.BreedID == nil {
+			scoreParts = append(scoreParts, "1")
+		} else {
+			scoreParts = append(scoreParts, fmt.Sprintf("CASE WHEN Ad.breed_id = $%d THEN 1 ELSE 0 END", argIndex))
+			args = append(args, *extra.Best.BreedID)
+			argIndex++
+		}
+
+		if extra.Best.MinPrice == nil {
+			scoreParts = append(scoreParts, "1")
+		} else {
+			scoreParts = append(scoreParts, fmt.Sprintf("CASE WHEN Ad.price >= $%d THEN 1 ELSE 0 END", argIndex))
+			args = append(args, *extra.Best.MinPrice)
+			argIndex++
+		}
+
+		if extra.Best.MaxPrice == nil {
+			scoreParts = append(scoreParts, "1")
+		} else {
+			scoreParts = append(scoreParts, fmt.Sprintf("CASE WHEN Ad.price <= $%d THEN 1 ELSE 0 END", argIndex))
+			args = append(args, *extra.Best.MaxPrice)
+			argIndex++
+		}
+
+		if extra.Best.Radius == nil {
+			scoreParts = append(scoreParts, "1")
+		} else {
+			scoreParts = append(scoreParts, fmt.Sprintf(`
+			CASE
+				WHEN Locality.latitude IS NULL OR Locality.longitude IS NULL THEN 0
+				WHEN haversine_distance(Locality.latitude, Locality.longitude, $%d, $%d) <= $%d THEN 1
+				ELSE 0
+			END`, argIndex, argIndex+1, argIndex+2))
+			args = append(args, extra.Latitude, extra.Longitude, *extra.Best.Radius)
+			argIndex += 3
+		}
+
+		scoreExpr := "(" + strings.Join(scoreParts, " + ") + ")"
+		query += fmt.Sprintf(" ORDER BY %s DESC, Ad.updated_at DESC ", scoreExpr)
+	}
+
 	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d;", argIndex, argIndex+1)
 	args = append(args, params.Limit, params.Offset)
 
@@ -138,6 +204,28 @@ LEFT JOIN Locality ON MyUser.locality_id = Locality.id
 	}
 
 	return result, nil
+}
+
+func (repo *AdPostgres) SaveHistory(ctx context.Context, row ad.History) error {
+	if _, err := repo.db.Exec(ctx, saveHistory, row.UserID, row.AnimalID, row.BreedID, row.MinPrice, row.MaxPrice, row.Radius, row.CreatedAt); err != nil {
+		if strings.Contains(err.Error(), "violates foreign key constraint") {
+			return ad.ErrInvalidForeignKey
+		}
+		return errors.Wrap(err, "failed to save history")
+	}
+
+	return nil
+}
+
+func (repo *AdPostgres) GetHistory(ctx context.Context, userID uuid.UUID) (*ad.History, error) {
+	result := ad.History{}
+	if err := repo.db.QueryRow(ctx, getHistory, userID).Scan(&result.UserID, &result.AnimalID, &result.BreedID, &result.MinPrice, &result.MaxPrice, &result.Radius, &result.CreatedAt); err != nil {
+		if goerrors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "failed to get history")
+	}
+	return &result, nil
 }
 
 func (repo *AdPostgres) GetAd(ctx context.Context, id uuid.UUID) (ad.RespAd, error) {

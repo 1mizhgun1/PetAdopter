@@ -63,9 +63,11 @@ CREATE TABLE IF NOT EXISTS Watch (
 
 CREATE TABLE IF NOT EXISTS History (
     user_id UUID PRIMARY KEY REFERENCES MyUser (id),
-    query TEXT CONSTRAINT history_query_length CHECK (char_length(query) <= 64),
     animal_id UUID REFERENCES Animal (id),
     breed_id UUID REFERENCES Breed (id),
+    min_price INTEGER,
+    max_price INTEGER,
+    radius INTEGER,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 

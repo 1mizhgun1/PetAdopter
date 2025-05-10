@@ -144,7 +144,8 @@ func main() {
 	adHandler := handlersOfAd.NewAdHandler(&adLogic, userLogic, &localityLogic, chatGPT, cfg.Ad)
 
 	reqIDMiddleware := middleware.CreateRequestIDMiddleware(logger)
-	sessionMiddleware := middleware.CreateSessionMiddleware(userLogic, sessionLogic, cfg.Session)
+	sessionMiddlewareNeedAuth := middleware.CreateSessionMiddleware(userLogic, sessionLogic, cfg.Session, true)
+	sessionMiddlewareNoAuth := middleware.CreateSessionMiddleware(userLogic, sessionLogic, cfg.Session, false)
 
 	r := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 	r.Use(
@@ -169,29 +170,29 @@ func main() {
 			Methods(http.MethodPost, http.MethodOptions)
 		user.Handle("/login", http.HandlerFunc(userHandler.Login)).
 			Methods(http.MethodPost, http.MethodOptions)
-		user.Handle("/logout", sessionMiddleware(http.HandlerFunc(userHandler.Logout))).
+		user.Handle("/logout", sessionMiddlewareNeedAuth(http.HandlerFunc(userHandler.Logout))).
 			Methods(http.MethodPost, http.MethodOptions)
-		user.Handle("", sessionMiddleware(http.HandlerFunc(userHandler.GetUser))).
+		user.Handle("", sessionMiddlewareNeedAuth(http.HandlerFunc(userHandler.GetUser))).
 			Methods(http.MethodGet, http.MethodOptions)
-		user.Handle("/set_locality", sessionMiddleware(http.HandlerFunc(userHandler.SetLocality))).
+		user.Handle("/set_locality", sessionMiddlewareNeedAuth(http.HandlerFunc(userHandler.SetLocality))).
 			Methods(http.MethodPost, http.MethodOptions)
 	}
 
 	ads := r.PathPrefix("/ads").Subrouter()
 	{
-		ads.Handle("", sessionMiddleware(http.HandlerFunc(adHandler.Search))).
+		ads.Handle("", sessionMiddlewareNoAuth(http.HandlerFunc(adHandler.Search))).
 			Methods(http.MethodGet, http.MethodOptions)
 		ads.Handle("/{id}", http.HandlerFunc(adHandler.Get)).
 			Methods(http.MethodGet, http.MethodOptions)
 		ads.Handle("/{id}/same", http.HandlerFunc(adHandler.GetSame)).
 			Methods(http.MethodGet, http.MethodOptions)
-		ads.Handle("/create", sessionMiddleware(http.HandlerFunc(adHandler.Create))).
+		ads.Handle("/create", sessionMiddlewareNeedAuth(http.HandlerFunc(adHandler.Create))).
 			Methods(http.MethodPost, http.MethodOptions)
-		ads.Handle("/{id}/update", sessionMiddleware(http.HandlerFunc(adHandler.Update))).
+		ads.Handle("/{id}/update", sessionMiddlewareNeedAuth(http.HandlerFunc(adHandler.Update))).
 			Methods(http.MethodPost, http.MethodOptions)
-		ads.Handle("/{id}/update_photo", sessionMiddleware(http.HandlerFunc(adHandler.UpdatePhoto))).
+		ads.Handle("/{id}/update_photo", sessionMiddlewareNeedAuth(http.HandlerFunc(adHandler.UpdatePhoto))).
 			Methods(http.MethodPost, http.MethodOptions)
-		ads.Handle("/{id}/close", sessionMiddleware(http.HandlerFunc(adHandler.Close))).
+		ads.Handle("/{id}/close", sessionMiddlewareNeedAuth(http.HandlerFunc(adHandler.Close))).
 			Methods(http.MethodPost, http.MethodOptions)
 		ads.Handle("/{id}/delete", middleware.AdminMiddleware(http.HandlerFunc(adHandler.Delete))).
 			Methods(http.MethodPost, http.MethodOptions)

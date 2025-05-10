@@ -60,3 +60,8 @@ func LogErrorMessage(ctx context.Context, msg string) {
 	logger := GetLoggerFromContext(ctx)
 	logger.Error(msg)
 }
+
+func LogInfoMessage(ctx context.Context, msg string) {
+	logger := GetLoggerFromContext(ctx)
+	logger.Info(msg)
+}

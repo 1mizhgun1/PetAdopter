@@ -89,8 +89,19 @@ type SearchParams struct {
 }
 
 type SearchExtra struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	Latitude  float64  `json:"latitude"`
+	Longitude float64  `json:"longitude"`
+	Best      *History `json:"best"`
+}
+
+type History struct {
+	UserID    uuid.UUID  `json:"user_id"`
+	AnimalID  *uuid.UUID `json:"animal_id"`
+	BreedID   *uuid.UUID `json:"breed_id"`
+	MinPrice  *int       `json:"min_price"`
+	MaxPrice  *int       `json:"max_price"`
+	Radius    *int       `json:"radius"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 func NewSearchParams(cfg config.AdConfig) SearchParams {
@@ -109,6 +120,8 @@ func NewSearchParams(cfg config.AdConfig) SearchParams {
 
 type AdRepo interface {
 	SearchAds(ctx context.Context, params SearchParams, extra SearchExtra) ([]RespAd, error)
+	SaveHistory(ctx context.Context, row History) error
+	GetHistory(ctx context.Context, userID uuid.UUID) (*History, error)
 	GetAd(ctx context.Context, id uuid.UUID) (RespAd, error)
 	CreateAd(ctx context.Context, ad Ad) error
 	UpdateAd(ctx context.Context, id uuid.UUID, form UpdateForm, now time.Time) error
