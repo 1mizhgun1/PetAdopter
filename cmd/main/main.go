@@ -16,6 +16,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
+
 	"pet_adopter/src/chatgpt/logic"
 	"pet_adopter/src/chatgpt/request"
 
@@ -23,6 +24,7 @@ import (
 	"pet_adopter/src/middleware"
 
 	httpSwagger "github.com/swaggo/http-swagger"
+
 	_ "pet_adopter/docs"
 
 	handlersOfAd "pet_adopter/src/ad/handlers"

@@ -7,11 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"pet_adopter/src/ad"
+
 	"github.com/jackc/pgtype/pgxtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 	"github.com/satori/uuid"
-	"pet_adopter/src/ad"
 )
 
 const (
@@ -181,6 +182,8 @@ LEFT JOIN Locality ON MyUser.locality_id = Locality.id
 
 	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d;", argIndex, argIndex+1)
 	args = append(args, params.Limit, params.Offset)
+
+	fmt.Printf("%s\n", query)
 
 	result := make([]ad.RespAd, 0)
 
