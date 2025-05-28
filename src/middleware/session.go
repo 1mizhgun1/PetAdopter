@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"pet_adopter/src/config"
 	"pet_adopter/src/user/logic"
 	"pet_adopter/src/utils"
+
+	"github.com/gorilla/mux"
 )
 
 const msgNoAuth = "no auth"
@@ -52,6 +53,7 @@ func CreateSessionMiddleware(userLogic *logic.UserLogic, sessionLogic *logic.Ses
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/ads" && r.URL.Query().Get("radius") != "" {
+				fmt.Printf("radius='%s'\n", r.URL.Query().Get("radius"))
 				needAuth = true
 			}
 
