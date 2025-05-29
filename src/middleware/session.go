@@ -52,9 +52,10 @@ func hasAuth(r *http.Request, sessionLogic *logic.SessionLogic, cfg config.Sessi
 func CreateSessionMiddleware(userLogic *logic.UserLogic, sessionLogic *logic.SessionLogic, cfg config.SessionConfig, needAuth bool) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			isAuthRequired := needAuth
+
 			if r.URL.Path == "/api/v1/ads" && r.URL.Query().Get("radius") != "" {
-				fmt.Printf("radius='%s'\n", r.URL.Query().Get("radius"))
-				needAuth = true
+				isAuthRequired = true
 			}
 
 			status, logFunc, auth := hasAuth(r, sessionLogic, cfg)
@@ -63,7 +64,8 @@ func CreateSessionMiddleware(userLogic *logic.UserLogic, sessionLogic *logic.Ses
 				http.Error(w, utils.Internal, status)
 				return
 			}
-			if !auth && needAuth {
+
+			if !auth && isAuthRequired {
 				logFunc()
 				http.Error(w, msgNoAuth, status)
 				return
